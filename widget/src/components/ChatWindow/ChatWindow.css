@@ -1,0 +1,29 @@
+.chat-widget {
+    width: 380px;
+    height: 600px;
+
+    background: white;
+
+    border-radius: 14px;
+
+    overflow: hidden;
+
+    display: flex;
+
+    flex-direction: column;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+}
+
+.chat-header{
+
+    background:#2563eb;
+
+    color:white;
+
+    padding:18px;
+
+    font-size:18px;
+
+    font-weight:600;
+}
