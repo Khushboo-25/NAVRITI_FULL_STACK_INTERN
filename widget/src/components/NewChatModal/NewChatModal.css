@@ -1,0 +1,45 @@
+.modal-overlay{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.4);
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+}
+
+.modal{
+
+    width:320px;
+
+    background:white;
+
+    padding:20px;
+
+    border-radius:10px;
+}
+
+.modal select{
+
+    width:100%;
+
+    padding:10px;
+
+    margin-top:15px;
+}
+
+.modal-buttons{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    gap:10px;
+
+    margin-top:20px;
+}

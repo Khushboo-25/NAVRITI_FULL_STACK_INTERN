@@ -7,14 +7,21 @@ function ChatWindow({
   message,
   setMessage,
   sendMessage,
+  selectedConversation,
 }) {
   return (
     <div className="chat-widget">
       <div className="chat-header">
-        <h2>Communication Widget</h2>
+        
+        <h2>
+          Talking to: {selectedConversation
+            ? selectedConversation.displayName
+            : "Select a Conversation"}
+        </h2>
       </div>
 
       <MessageList messages={messages} />
+
       <ChatInput
         message={message}
         setMessage={setMessage}

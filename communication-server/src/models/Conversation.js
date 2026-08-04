@@ -7,7 +7,11 @@ const conversationSchema = new mongoose.Schema(
             enum:["direct","group"],
             default:"direct",
         },
-        
+        displayName:{
+            
+            type: String,
+            default: null,
+        },
     },
     {
         timestamps: true,

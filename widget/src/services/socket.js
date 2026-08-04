@@ -12,5 +12,11 @@ socket.on("connect", () => {
 socket.on("disconnect", (err) => {
     console.log("Disconnected from server", err.message);
 });
+socket.on("leaveConversation", (conversationId) => {
+  socket.leave(conversationId);
+  console.log(
+    `user ${socket.id} left conversation: ${conversationId}`
+  );
+});
 
 export default socket;

@@ -1,0 +1,12 @@
+.user-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:15px 0;
+}
+
+.user-list label{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}

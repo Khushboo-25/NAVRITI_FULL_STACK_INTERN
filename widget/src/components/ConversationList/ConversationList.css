@@ -1,0 +1,12 @@
+.conversation-list {
+
+    width: 280px;
+
+    height: 100%;
+
+    border-right: 1px solid #e5e7eb;
+
+    overflow-y: auto;
+
+    background: white;
+}
