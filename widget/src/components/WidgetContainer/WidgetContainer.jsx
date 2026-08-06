@@ -4,70 +4,45 @@ import socket from "../../services/socket";
 import ChatWindow from "../ChatWindow/ChatWindow";
 import ConversationList from "../ConversationList/ConversationList";
 import NewChatModal from "../NewChatModal/NewChatModal";
+import NewGroupModal from "../NewGroupModal/NewGroupModal";
 
 import { getMessages } from "../../services/messageService";
 import {
-  createOrGetSession,
+  createOrGetDirect,
   getUserConversations,
-  
+  createGroup,
 } from "../../services/conversationService";
 
-// Temporary (Later these will come from Host Application)
-const users = [
-  {
-    userId: "user-1",
-    displayName: "User 1",
-  },
-  {
-    userId: "user-3",
-    displayName: "User 3",
-  },
-  {
-    userId: "user-4",
-    displayName: "User 4",
-  },
-  {
-    userId: "user-12",
-    displayName: "User 12",
-  },
-  {
-    userId: "user-13",
-    displayName: "User 13",
-  },
-  {
-    userId: "user-14",
-    displayName: "User 14",
-  },
-  {
-    userId: "user-15",
-    displayName: "User 15",
-  },
-];
+import "./WidgetContainer.css";
 
-const senderId = "user-15";
+function WidgetContainer({ currentUser, users }) {
+  const senderId = currentUser?.userId;
+  const isMobile = window.innerWidth <= 768;
 
-function WidgetContainer() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
   const [conversationId, setConversationId] = useState(null);
 
   const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] =
-    useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
-  // Load conversations when widget starts
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+
+  const [showChat, setShowChat] = useState(false);
+  
+  // Load conversations
   useEffect(() => {
     const initializeWidget = async () => {
       try {
-        const userConversations =
-          await getUserConversations(senderId);
+        const userConversations = await getUserConversations(senderId);
 
         setConversations(userConversations);
 
-        if (userConversations.length > 0) {
+        if (userConversations.length > 0 && !isMobile) {
           setSelectedConversation(userConversations[0]);
         }
       } catch (error) {
@@ -84,7 +59,7 @@ function WidgetContainer() {
     return () => {
       socket.off("newMessage");
     };
-  }, []);
+  }, [senderId]);
 
   // Load messages whenever conversation changes
   useEffect(() => {
@@ -92,9 +67,7 @@ function WidgetContainer() {
 
     const loadConversation = async () => {
       try {
-        setConversationId(
-          selectedConversation.conversationId
-        );
+        setConversationId(selectedConversation.conversationId);
 
         const previousMessages = await getMessages(
           selectedConversation.conversationId
@@ -128,12 +101,55 @@ function WidgetContainer() {
     setMessage("");
   };
 
-  // Start a new chat
+  const handleConversationSelect = (conversation) => {
+    console.log("clicked");
+    console.log(conversation);
+    console.log("showChat before:", showChat);
+
+    setSelectedConversation(conversation);
+
+    if (isMobile) {
+        setShowChat(true);
+    }
+  };
+
   const handleStartChat = async (targetUserId) => {
     try {
-      const session = await createOrGetSession(
+      const session = await createOrGetDirect(senderId, targetUserId);
+
+      const updatedConversations =
+        await getUserConversations(senderId);
+
+      setConversations(updatedConversations);
+
+      const conversation = updatedConversations.find(
+        (item) =>
+          item.conversationId === session.conversationId
+      );
+
+      if (conversation) {
+        setSelectedConversation(conversation);
+
+        if (isMobile) {
+          setShowChat(true);
+        }
+      }
+
+      setIsChatModalOpen(false);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleStartGroupChat = async (
+    groupName,
+    participants
+  ) => {
+    try {
+      const newGroup = await createGroup(
+        groupName,
         senderId,
-        targetUserId
+        participants
       );
 
       const updatedConversations =
@@ -141,67 +157,100 @@ function WidgetContainer() {
 
       setConversations(updatedConversations);
 
-      const conversation =
-        updatedConversations.find(
-          (item) =>
-            item.conversationId ===
-            session.conversationId
-        );
+      const conversation = updatedConversations.find(
+        (item) =>
+          item.conversationId === newGroup.conversationId
+      );
 
       if (conversation) {
         setSelectedConversation(conversation);
+
+        if (isMobile) {
+          setShowChat(true);
+        }
       }
 
-      setIsModalOpen(false);
+      setIsGroupModalOpen(false);
     } catch (error) {
       console.error(error);
     }
   };
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        height: "600px",
-        border: "1px solid #ddd",
-      }}
-    >
-      <div
-        style={{
-          width: "250px",
-          borderRight: "1px solid #ddd",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "10px",
-            borderBottom: "1px solid #ddd",
-          }}
-        >
-          <h3>Chats</h3>
+  const filteredConversations = conversations.filter(
+    (conversation) =>
+      conversation.displayName
+        .toLowerCase()
+        .includes(searchText.toLowerCase())
+  );
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-          >
-            +
-          </button>
+  return (
+    <div className="rtc-widget-container">
+
+      <div
+        className={`rtc-sidebar ${
+          isMobile && showChat ? "rtc-hide-mobile" : ""
+        }`}
+      >
+        <div className="rtc-sidebar-header">
+
+          <div className="rtc-sidebar-title">
+            <h3>
+              Current User: {currentUser?.displayName}
+            </h3>
+
+            <span>{conversations.length}</span>
+          </div>
+
+          <div className="rtc-sidebar-buttons">
+
+            <button
+              onClick={() =>
+                setIsChatModalOpen(true)
+              }
+            >
+              💬 Chat
+            </button>
+
+            <button
+              onClick={() =>
+                setIsGroupModalOpen(true)
+              }
+            >
+              👥 Group
+            </button>
+
+          </div>
+
+          <input
+            className="rtc-conversation-search"
+            type="text"
+            placeholder="🔍 Search conversations..."
+            value={searchText}
+            onChange={(e) =>
+              setSearchText(e.target.value)
+            }
+          />
+
         </div>
 
         <ConversationList
-          conversations={conversations}
+          conversations={filteredConversations}
           selectedConversation={selectedConversation}
           setSelectedConversation={
-            setSelectedConversation
+            handleConversationSelect
           }
         />
       </div>
 
-      <div style={{ flex: 1 }}>
+      <div
+        className={`rtc-chat-section ${
+          isMobile
+            ? showChat
+              ? "rtc-show-mobile"
+              : ""
+            : ""
+        }`}
+      >
         <ChatWindow
           messages={messages}
           message={message}
@@ -210,15 +259,29 @@ function WidgetContainer() {
           selectedConversation={
             selectedConversation
           }
+          currentUser={currentUser}
+          onBack={() => setShowChat(false)}
         />
       </div>
 
       <NewChatModal
         currentUser={senderId}
         users={users}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isChatModalOpen}
+        onClose={() =>
+          setIsChatModalOpen(false)
+        }
         onStartChat={handleStartChat}
+      />
+
+      <NewGroupModal
+        currentUser={senderId}
+        users={users}
+        isOpen={isGroupModalOpen}
+        onClose={() =>
+          setIsGroupModalOpen(false)
+        }
+        onCreateGroup={handleStartGroupChat}
       />
     </div>
   );

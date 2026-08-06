@@ -1,29 +1,91 @@
-.chat-widget {
-    width: 100%;
-    height: 600px;
-
-    background: white;
-
-    border-radius: 14px;
-
-    overflow: hidden;
-
-    display: flex;
-
-    flex-direction: column;
-
-    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+.rtc-chat-widget{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    background:#fff;
+    width:100%;
+    flex:1;
 }
 
-.chat-header{
+.rtc-chat-widget .rtc-chat-header{
+    display:flex;
+    align-items:center;
+    gap:15px;
 
-    background:#2563eb;
+    padding:16px 20px;
 
+    border-bottom:1px solid #e5e5e5;
+
+    background:#fafafa;
+}
+
+.rtc-chat-widget  .rtc-chat-header .rtc-chat-avatar{
+    width:48px;
+    height:48px;
+
+    border-radius:50%;
+
+    background: #9e9f9f;
     color:white;
 
-    padding:18px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:22px;
+}
+
+.rtc-chat-widget  .rtc-chat-header  .rtc-chat-details h2{
+    margin:0;
 
     font-size:18px;
+}
 
-    font-weight:600;
+.rtc-chat-widget  .rtc-chat-header  .rtc-chat-details p{
+    margin-top:4px;
+
+    color:#777;
+
+    font-size:13px;
+}
+
+.rtc-chat-widget.rtc-empty-chat{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.rtc-chat-widget .rtc-empty-chat-content{
+    text-align:center;
+    color:#888;
+}
+
+.rtc-chat-widget .rtc-empty-chat-content .rtc-empty-icon{
+    font-size:60px;
+    margin-bottom:20px;
+}
+.rtc-back-button{
+    display:none;
+}
+
+@media (max-width:768px){
+
+    .rtc-back-button{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        width:36px;
+        height:36px;
+
+        border:none;
+        border-radius:50%;
+
+        background:transparent;
+
+        font-size:20px;
+
+        cursor:pointer;
+    }
+
 }

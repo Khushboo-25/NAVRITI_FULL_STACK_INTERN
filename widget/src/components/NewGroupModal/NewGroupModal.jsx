@@ -9,30 +9,46 @@ function NewGroupModal({
   onCreateGroup,
 }) {
   const [groupName, setGroupName] = useState("");
+  const [search, setSearch] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
 
   if (!isOpen) return null;
 
+  const filteredUsers = users.filter(
+    (user) =>
+      user.userId !== currentUser &&
+      user.displayName
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
+
   const toggleUser = (userId) => {
     if (selectedUsers.includes(userId)) {
-      setSelectedUsers(
-        selectedUsers.filter((id) => id !== userId)
+      setSelectedUsers((prev) =>
+        prev.filter((id) => id !== userId)
       );
     } else {
-      setSelectedUsers([
-        ...selectedUsers,
-        userId,
-      ]);
+      setSelectedUsers((prev) => [...prev, userId]);
     }
   };
 
-  return (
-    <div className="modal-overlay">
-      <div className="modal">
+  const resetModal = () => {
+    setGroupName("");
+    setSearch("");
+    setSelectedUsers([]);
+    onClose();
+  };
 
-        <h3>Create Group</h3>
+  return (
+    <div className="rtc-modal-overlay">
+      <div className="rtc-modal">
+
+        <div className="rtc-modal-header">
+          <h2>👥 Create Group</h2>
+        </div>
 
         <input
+          className="rtc-group-name-input"
           type="text"
           placeholder="Group Name"
           value={groupName}
@@ -41,52 +57,113 @@ function NewGroupModal({
           }
         />
 
-        <h4>Select Members</h4>
+        <input
+          className="rtc-user-search"
+          type="text"
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+        />
 
-        <div className="user-list">
-          {users
-            .filter(
-              (user) =>
-                user.userId !== currentUser
-            )
-            .map((user) => (
-              <label key={user.userId}>
+        {selectedUsers.length > 0 && (
+          <div className="rtc-selected-members">
 
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.includes(
-                    user.userId
-                  )}
-                  onChange={() =>
-                    toggleUser(user.userId)
-                  }
-                />
+            {selectedUsers.map((id) => {
+              const user = users.find(
+                (u) => u.userId === id
+              );
 
+              return (
+                <div
+                  key={id}
+                  className="rtc-member-chip"
+                >
+                  {user.displayName}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleUser(id)
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+
+          </div>
+        )}
+
+        <div className="rtc-user-list">
+
+          {filteredUsers.map((user) => (
+
+            <div
+              key={user.userId}
+              className={`rtc-user-item ${
+                selectedUsers.includes(user.userId)
+                  ? "rtc-selected-user"
+                  : ""
+              }`}
+              onClick={() =>
+                toggleUser(user.userId)
+              }
+            >
+
+              <div className="rtc-user-avatar">
+                {user.displayName
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+
+              <div className="rtc-user-name">
                 {user.displayName}
+              </div>
 
-              </label>
-            ))}
+              {selectedUsers.includes(
+                user.userId
+              ) && (
+                <span className="rtc-check">
+                  ✓
+                </span>
+              )}
+
+            </div>
+
+          ))}
+
         </div>
 
-        <div className="modal-buttons">
+        <div className="rtc-modal-buttons">
 
           <button
+            className="rtc-cancel-btn"
+            onClick={resetModal}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="rtc-primary-btn"
             disabled={
-              !groupName ||
+              !groupName.trim() ||
               selectedUsers.length === 0
             }
-            onClick={() =>
+            onClick={() => {
               onCreateGroup(
                 groupName,
                 selectedUsers
-              )
-            }
+              );
+
+              setGroupName("");
+              setSearch("");
+              setSelectedUsers([]);
+            }}
           >
             Create Group
-          </button>
-
-          <button onClick={onClose}>
-            Cancel
           </button>
 
         </div>

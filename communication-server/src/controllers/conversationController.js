@@ -1,7 +1,11 @@
 import Conversation from "../models/conversation.js";
 import Participant from "../models/participant.js";
+import Message from "../models/message.js";
 
-export const createOrGetSession = async (req, res) => {
+
+
+// direct chat between two users
+export const createOrGetDirect = async (req, res) => {
   try {
     const { currentUserId, targetUserId } = req.body;
 
@@ -75,6 +79,8 @@ export const createOrGetSession = async (req, res) => {
     });
   }
 };
+
+
 export const getUserConversations = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -97,9 +103,10 @@ export const getUserConversations = async (req, res) => {
 for (const conversation of conversations) {
 
     let displayName = conversation.displayName;
-
+    
     // For direct chats, show the other participant
     if (conversation.type === "direct") {
+
 
         const conversationParticipants = await Participant.find({
             conversationId: conversation._id,
@@ -114,10 +121,23 @@ for (const conversation of conversations) {
             : "Unknown";
     }
 
+    // Fetch latest message
+    const lastMessage = await Message.findOne({
+        conversationId: conversation._id,
+    }).sort({ createdAt: -1 });
+
     response.push({
         conversationId: conversation._id,
         type: conversation.type,
         displayName,
+
+        lastMessage: lastMessage
+            ? lastMessage.content
+            : "",
+
+        lastMessageTime: lastMessage
+            ? lastMessage.createdAt
+            : null,
     });
 }
 
@@ -139,9 +159,9 @@ export const createGroup = async (req, res) => {
     } = req.body;
 
     if (
-      !groupName ||
+      !groupName.trim() ||
       !currentUserId ||
-      !participants
+      !participants || participants.length === 0
     ) {
       return res.status(400).json({
         message: "Invalid request",
@@ -168,6 +188,8 @@ export const createGroup = async (req, res) => {
 
     res.status(201).json({
       conversationId: conversation._id,
+      displayName: groupName,
+      participants: allParticipants,
     });
 
   } catch (error) {

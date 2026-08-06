@@ -8,19 +8,63 @@ function ChatWindow({
   setMessage,
   sendMessage,
   selectedConversation,
-}) {
+  currentUser,
+  onBack
+})
+{
+    if (!selectedConversation) {
+        return (
+          <div className="rtc-chat-widget rtc-empty-chat">
+            <div className="rtc-empty-chat-content">
+              <div className="rtc-empty-icon">💬</div>
+
+              <h2>No Conversation Selected</h2>
+
+              <p>
+                Select a conversation from the left
+                or start a new chat.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+    
   return (
-    <div className="chat-widget">
-      <div className="chat-header">
-        
-        <h2>
-          Talking to: {selectedConversation
-            ? selectedConversation.displayName
-            : "Select a Conversation"}
-        </h2>
+    <div className="rtc-chat-widget">
+      <div className="rtc-chat-header">
+        <button
+            className="rtc-back-button"
+            onClick={onBack}
+        >
+            ←
+        </button>
+        <div className="rtc-chat-avatar">
+          {selectedConversation.type === "group"
+            ? "👥"
+            : "👤"}
+        </div>
+
+        <div className="rtc-chat-details">
+
+          <h2>
+            {selectedConversation.displayName}
+          </h2>
+
+          <p>
+            {selectedConversation.type === "group"
+              ? "Group Conversation"
+              : "Direct Conversation"}
+          </p>
+
+        </div>
+
       </div>
 
-      <MessageList messages={messages} />
+      <MessageList 
+      messages={messages} 
+      currentUser={currentUser}
+      />
 
       <ChatInput
         message={message}

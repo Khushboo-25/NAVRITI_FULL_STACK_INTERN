@@ -1,11 +1,5 @@
-.conversation-list {
-
-    width: 280px;
-
-    height: 100%;
-
-    border-right: 1px solid #e5e7eb;
-
+.rtc-conversation-list {
+    flex: 1;
     overflow-y: auto;
 
     background: white;

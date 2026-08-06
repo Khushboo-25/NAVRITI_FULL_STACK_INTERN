@@ -1,7 +1,6 @@
 import "./NewChatModal.css";
 import { useState } from "react";
 
-
 function NewChatModal({
   currentUser,
   users,
@@ -10,58 +9,89 @@ function NewChatModal({
   onStartChat,
 }) {
   const [selectedUser, setSelectedUser] = useState("");
+  const [search, setSearch] = useState("");
 
   if (!isOpen) return null;
 
+  const filteredUsers = users.filter(
+    (user) =>
+      user.userId !== currentUser &&
+      user.displayName
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
+
   return (
-    <div className="modal-overlay">
+    <div className="rtc-modal-overlay">
 
-      <div className="modal">
+      <div className="rtc-modal">
 
-        <h3>Start New Chat</h3>
+        <h2>💬 New Chat</h2>
 
-        <select
-          value={selectedUser}
+        <input
+          className="rtc-user-search"
+          type="text"
+          placeholder="Search users..."
+          value={search}
           onChange={(e) =>
-            setSelectedUser(e.target.value)
+            setSearch(e.target.value)
           }
-        >
-          <option value="">
-            Select User
-          </option>
+        />
 
-          {users
-            .filter(
-              (user) => user.userId !== currentUser
-            )
-            .map((user) => (
-              <option
-                key={user.userId}
-                value={user.userId}
-              >
+        <div className="rtc-user-list">
+
+          {filteredUsers.map((user) => (
+
+            <div
+              key={user.userId}
+              className={`rtc-user-item ${
+                selectedUser === user.userId
+                  ? "rtc-selected-user"
+                  : ""
+              }`}
+              onClick={() =>
+                setSelectedUser(user.userId)
+              }
+            >
+              <div className="rtc-user-avatar">
+                {user.displayName
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+
+              <div>
                 {user.displayName}
-              </option>
+              </div>
+
+            </div>
+
           ))}
-        </select>
 
-        <div className="modal-buttons">
+        </div>
 
-          <button
-            disabled={!selectedUser}
-            onClick={() =>
-              onStartChat(selectedUser)
-            }
-          >
-            Start Chat
-          </button>
+        <div className="rtc-modal-buttons">
 
           <button
+            className="rtc-cancel-btn"
             onClick={() => {
               setSelectedUser("");
+              setSearch("");
               onClose();
             }}
           >
             Cancel
+          </button>
+
+          <button
+            className="rtc-primary-btn"
+            disabled={!selectedUser}
+            onClick={() => {
+              onStartChat(selectedUser);
+              setSelectedUser("");
+              setSearch("");
+            }}
+          >
+            Start Chat
           </button>
 
         </div>

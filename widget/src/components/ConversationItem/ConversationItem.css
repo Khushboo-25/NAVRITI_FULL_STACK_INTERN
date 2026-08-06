@@ -1,34 +1,80 @@
-.conversation-item {
+.rtc-conversation-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
-    padding: 14px;
-
-    border-bottom: 1px solid #e5e7eb;
+    padding: 14px 16px;
 
     cursor: pointer;
 
-    transition: background 0.2s;
+    transition: all 0.2s ease;
+
+    border-left: 4px solid transparent;
 }
 
-.conversation-item:hover {
-
-    background: #f8fafc;
+.rtc-conversation-item:hover {
+    background: #e5f0fa;
 }
 
-.conversation-item.active {
+.rtc-conversation-item.selected {
+    background: #eaf3ff;
+    border-left-color: #7eb7f9;
 
-    background: #dbeafe;
+border-left:4px solid var(--primary);
 }
 
-.conversation-name {
+.rtc-conversation-avatar {
+    width: 46px;
+    height: 46px;
 
+    border-radius: 50%;
+
+    background: #7a8898;
+    color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: 18px;
     font-weight: 600;
+
+    flex-shrink: 0;
 }
 
-.conversation-type {
+.rtc-conversation-content {
+    flex: 1;
+    overflow: hidden;
+}
 
-    font-size: 12px;
+.rtc-conversation-name {
+    font-size: 15px;
+    font-weight: 600;
 
-    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rtc-conversation-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
-    margin-top: 4px;
+.rtc-conversation-time{
+    font-size:11px;
+    color:#888;
+}
+
+.rtc-conversation-preview{
+    margin-top:4px;
+
+    color:#666;
+
+    font-size:13px;
+
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    text-align: left;
 }

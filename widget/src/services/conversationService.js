@@ -2,11 +2,11 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/conversations";
 
-export const createOrGetSession = async (
+export const createOrGetDirect = async (
   currentUserId,
   targetUserId
 ) => {
-  const response = await axios.post(`${API_URL}/session`, {
+  const response = await axios.post(`${API_URL}/direct`, {
     currentUserId,
     targetUserId,
   });
@@ -27,3 +27,4 @@ export const createGroup = async (groupName, currentUserId, participants) => {
   });
   return response.data;
 };
+

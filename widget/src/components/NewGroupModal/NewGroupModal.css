@@ -1,12 +1,125 @@
-.user-list{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    margin:15px 0;
+.rtc-group-name-input,
+.rtc-user-search{
+    width:100%;
+    box-sizing:border-box;
+
+    padding:12px 14px;
+
+    border:1px solid #dcdcdc;
+    border-radius:8px;
+
+    margin-bottom:14px;
+
+    outline:none;
 }
 
-.user-list label{
+.rtc-group-name-input:focus,
+.rtc-user-search:focus{
+    border-color:#4f8df7;
+}
+
+.rtc-selected-members{
     display:flex;
+    flex-wrap:wrap;
+
     gap:8px;
+
+    margin-bottom:15px;
+}
+
+.rtc-member-chip{
+
+    display:flex;
     align-items:center;
+
+    gap:8px;
+
+    background:#eaf2ff;
+
+    padding:6px 12px;
+
+    border-radius:20px;
+
+    font-size:14px;
+}
+
+.rtc-member-chip button{
+
+    border:none;
+    background:none;
+
+    cursor:pointer;
+
+    color:#555;
+
+    font-size:14px;
+}
+
+.rtc-user-list{
+
+    max-height:280px;
+
+    overflow-y:auto;
+
+    display:flex;
+    flex-direction:column;
+
+    gap:6px;
+}
+
+.rtc-user-item{
+
+    display:flex;
+    align-items:center;
+
+    gap:12px;
+
+    padding:12px;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+    transition:.2s;
+}
+
+.rtc-user-item:hover{
+    background:#f5f7fb;
+}
+
+.rtc-selected-user{
+    background:#e8f2ff;
+}
+
+.rtc-user-avatar{
+
+    width:42px;
+    height:42px;
+
+    border-radius:50%;
+
+    background:#809ef5;
+
+    color:white;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-weight:600;
+
+    flex-shrink:0;
+}
+
+.rtc-user-name{
+    flex:1;
+}
+
+.rtc-check{
+
+    color:#2563eb;
+
+    font-weight:700;
+
+    font-size:18px;
 }

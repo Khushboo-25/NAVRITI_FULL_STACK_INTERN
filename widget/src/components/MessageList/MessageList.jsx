@@ -1,18 +1,29 @@
+import {useEffect,useRef} from "react";
+
 import MessageItem from "../MessageItem/MessageItem";
 import "./MessageList.css";
-function MessageList({ messages }) {
+function MessageList({ messages, currentUser }) {
   
+  const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
 
   return (
-    <div className="message-list">
+
+    <div className="rtc-message-list">
 
       {messages.map((msg) => (
         <MessageItem
           key={msg._id}
           message={msg}
+          currentUser={currentUser}
         />
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 }

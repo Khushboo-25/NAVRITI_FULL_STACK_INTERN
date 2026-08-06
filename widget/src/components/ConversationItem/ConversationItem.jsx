@@ -4,21 +4,56 @@ function ConversationItem({
   conversation,
   selected,
   onClick,
+  
 }) {
+  const avatar =
+    conversation.type === "group"
+      ? "👥"
+      : conversation.displayName
+          ?.charAt(0)
+          .toUpperCase();
+
   return (
     <div
-      className={`conversation-item ${
-        selected ? "active" : ""
+      className={`rtc-conversation-item ${
+        selected ? "selected" : ""
       }`}
       onClick={onClick}
     >
-      <div className="conversation-name">
-        {conversation.displayName}
+      <div className="rtc-conversation-avatar">
+        {avatar}
       </div>
 
-      <div className="conversation-type">
-        {conversation.type}
+      <div className="rtc-conversation-content">
+
+         <div className="rtc-conversation-top">
+
+              <div className="rtc-conversation-name">
+                  {conversation.displayName}
+              </div>
+
+              <div className="rtc-conversation-time">
+
+                  {conversation.lastMessageTime &&
+                      new Date(
+                          conversation.lastMessageTime
+                      ).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                      })}
+
+              </div>
+
+          </div>
+
+          <div className="rtc-conversation-preview">
+              {conversation.lastMessage ||
+        "No messages yet"}
+          </div>
+
+
       </div>
+
     </div>
   );
 }

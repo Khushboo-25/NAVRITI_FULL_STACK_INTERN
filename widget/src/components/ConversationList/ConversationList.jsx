@@ -7,7 +7,7 @@ function ConversationList({
   setSelectedConversation,
 }) {
   return (
-    <div className="conversation-list">
+    <div className="rtc-conversation-list">
 
       {conversations.map((conversation) => (
 

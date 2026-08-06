@@ -6,16 +6,29 @@ function ChatInput({
   sendMessage,
 }) {
   return (
-    <div className="chat-input">
+    <div className="rtc-chat-input-container">
       <input
+        className="rtc-chat-input"
         type="text"
+        placeholder="Type a message..."
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type message..."
+        onChange={(e) =>
+          setMessage(e.target.value)
+        }
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            sendMessage();
+          }
+        }}
       />
 
-      <button onClick={sendMessage}>
-        Send
+
+
+      <button
+        className="rtc-send-button"
+        onClick={sendMessage}
+      >
+        ➤
       </button>
     </div>
   );
