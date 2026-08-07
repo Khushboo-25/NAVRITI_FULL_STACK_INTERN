@@ -1,22 +1,26 @@
-import {io} from "socket.io-client";
+import { io } from "socket.io-client";
+import { getServerUrl } from "./config";
 
+let socket = null;
 
-console.log("socket.js loaded");
-const socket = io("http://localhost:5000",{
-    transports: ["websocket"],
-});
+export function initializeSocket() {
+  if(!socket){
+    socket = io(getServerUrl(), {
+      transports: ["websocket"],
+    });
 
-socket.on("connect", () => {
-    console.log("Connected:", socket.id);
-});
-socket.on("disconnect", (err) => {
-    console.log("Disconnected from server", err.message);
-});
-socket.on("leaveConversation", (conversationId) => {
-  socket.leave(conversationId);
-  console.log(
-    `user ${socket.id} left conversation: ${conversationId}`
-  );
-});
+    socket.on("connect", () => {
+      console.log("Connected:", socket.id);
+    });
 
-export default socket;
+    socket.on("disconnect", (reason) => {
+      console.log("Disconnected:", reason);
+    });
+  }
+
+  return socket;
+}
+
+export function getSocket() {
+  return socket;
+}

@@ -10,7 +10,7 @@ import socketHandler from './socket/socketHandler.js';
 
 const io = new server.Server(httpServer,{
     cors:{
-        origin: "*",
+        origin: process.env.CLIENT_URL || "*",
         methods: ["GET", "POST"]
     }
 });

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "axios": "^1.19.0",
+    "react-shadow": "^20.6.0",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {

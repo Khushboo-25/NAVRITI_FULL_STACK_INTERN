@@ -1,8 +1,11 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5000/api/messages";
+import { getApi } from "./api";
 
 export const getMessages = async (conversationId) => {
-  const response = await axios.get(`${API_URL}/${conversationId}`);
+  const api = getApi();
+
+  const response = await api.get(
+    `/messages/${conversationId}`
+  );
+
   return response.data;
 };

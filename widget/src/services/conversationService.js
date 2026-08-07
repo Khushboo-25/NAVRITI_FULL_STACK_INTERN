@@ -1,12 +1,12 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5000/api/conversations";
+import { getApi } from "./api";
 
 export const createOrGetDirect = async (
   currentUserId,
   targetUserId
 ) => {
-  const response = await axios.post(`${API_URL}/direct`, {
+  const api = getApi();
+
+  const response = await api.post("/conversations/direct", {
     currentUserId,
     targetUserId,
   });
@@ -14,17 +14,28 @@ export const createOrGetDirect = async (
   return response.data;
 };
 
-// NEW
 export const getUserConversations = async (userId) => {
-  const response = await axios.get(`${API_URL}/user/${userId}`);
+  const api = getApi();
+
+  const response = await api.get(
+    `/conversations/user/${userId}`
+  );
+
   return response.data;
 };
-export const createGroup = async (groupName, currentUserId, participants) => {
-  const response = await axios.post(`${API_URL}/group`, {
+
+export const createGroup = async (
+  groupName,
+  currentUserId,
+  participants
+) => {
+  const api = getApi();
+
+  const response = await api.post("/conversations/group", {
     groupName,
     currentUserId,
     participants,
   });
+
   return response.data;
 };
-

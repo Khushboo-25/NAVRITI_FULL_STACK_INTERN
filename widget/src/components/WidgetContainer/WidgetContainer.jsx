@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import socket from "../../services/socket";
+import {
+  initializeSocket,
+  getSocket,
+} from "../../services/socket";
 
 import ChatWindow from "../ChatWindow/ChatWindow";
 import ConversationList from "../ConversationList/ConversationList";
@@ -14,8 +17,18 @@ import {
 } from "../../services/conversationService";
 
 import "./WidgetContainer.css";
+import { initializeConfig } from "../../services/config";
+import { initializeApi } from "../../services/api";
 
-function WidgetContainer({ currentUser, users }) {
+
+function WidgetContainer({ currentUser, users ,serverUrl}) {
+  
+useEffect(() => {
+  initializeConfig(serverUrl);
+  initializeApi();
+  initializeSocket();
+
+}, [serverUrl]);
   const senderId = currentUser?.userId;
   const isMobile = window.innerWidth <= 768;
 
@@ -36,6 +49,7 @@ function WidgetContainer({ currentUser, users }) {
   
   // Load conversations
   useEffect(() => {
+    const socket = initializeSocket(serverUrl);
     const initializeWidget = async () => {
       try {
         const userConversations = await getUserConversations(senderId);
@@ -74,6 +88,7 @@ function WidgetContainer({ currentUser, users }) {
         );
 
         setMessages(previousMessages);
+        const socket = getSocket();
 
         socket.emit(
           "joinConversation",
@@ -90,6 +105,7 @@ function WidgetContainer({ currentUser, users }) {
   const sendMessage = () => {
     if (!message.trim()) return;
     if (!conversationId) return;
+    const socket = getSocket();
 
     socket.emit("sendMessage", {
       conversationId,

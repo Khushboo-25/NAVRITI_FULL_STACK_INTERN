@@ -10,4 +10,4 @@ router.post("/direct",createOrGetDirect);
 router.get("/user/:userId", getUserConversations);
 router.post("/group", createGroup);
 
-export default router;
+export default router; 
