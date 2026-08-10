@@ -9,7 +9,10 @@ function ChatWindow({
   sendMessage,
   selectedConversation,
   currentUser,
-  onBack
+  users,
+  onBack,
+  onEditMessage,
+  onDeleteMessage,
 })
 {
     if (!selectedConversation) {
@@ -64,12 +67,15 @@ function ChatWindow({
       <MessageList 
       messages={messages} 
       currentUser={currentUser}
+      onEditMessage={onEditMessage}
+      onDeleteMessage={onDeleteMessage}
       />
 
       <ChatInput
         message={message}
         setMessage={setMessage}
         sendMessage={sendMessage}
+        users={users}
       />
     </div>
   );

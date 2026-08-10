@@ -55,3 +55,76 @@
 
     opacity:.75;
 }
+/* Edit message */
+
+.rtc-message-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rtc-message-edit input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+}
+
+.rtc-message-edit input:focus {
+  border-color: #888;
+}
+
+.rtc-message-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.rtc-message-actions button {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rtc-edit-button {
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.rtc-edit-button:hover {
+  text-decoration: underline;
+}
+.rtc-deleted-message {
+  font-style: italic;
+  opacity: 0.65;
+}
+.rtc-delete-button {
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: #b94a48;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rtc-delete-button:hover {
+  background: rgba(185, 74, 72, 0.1);
+  color: #a33a38;
+}
+
+.rtc-delete-button:active {
+  background: rgba(185, 74, 72, 0.16);
+}

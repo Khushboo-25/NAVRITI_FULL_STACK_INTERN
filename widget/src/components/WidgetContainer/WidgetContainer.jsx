@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   initializeSocket,
   getSocket,
@@ -10,6 +11,7 @@ import NewChatModal from "../NewChatModal/NewChatModal";
 import NewGroupModal from "../NewGroupModal/NewGroupModal";
 
 import { getMessages } from "../../services/messageService";
+
 import {
   createOrGetDirect,
   getUserConversations,
@@ -17,134 +19,316 @@ import {
 } from "../../services/conversationService";
 
 import "./WidgetContainer.css";
+
 import { initializeConfig } from "../../services/config";
 import { initializeApi } from "../../services/api";
 
-
-function WidgetContainer({ currentUser, users ,serverUrl}) {
-  
-useEffect(() => {
-  initializeConfig(serverUrl);
-  initializeApi();
-  initializeSocket();
-
-}, [serverUrl]);
+function WidgetContainer({
+  currentUser,
+  users,
+  serverUrl,
+}) {
   const senderId = currentUser?.userId;
   const isMobile = window.innerWidth <= 768;
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
-  const [conversationId, setConversationId] = useState(null);
+  const [conversationId, setConversationId] =
+    useState(null);
 
-  const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [conversations, setConversations] =
+    useState([]);
 
-  const [searchText, setSearchText] = useState("");
+  const [selectedConversation, setSelectedConversation] =
+    useState(null);
 
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [searchText, setSearchText] =
+    useState("");
 
-  const [showChat, setShowChat] = useState(false);
-  
-  // Load conversations
+  const [isChatModalOpen, setIsChatModalOpen] =
+    useState(false);
+
+  const [isGroupModalOpen, setIsGroupModalOpen] =
+    useState(false);
+
+  const [showChat, setShowChat] =
+    useState(false);
+
+  /*
+   * --------------------------------------------------
+   * Initialize API + Socket
+   * --------------------------------------------------
+   */
+
   useEffect(() => {
-    const socket = initializeSocket(serverUrl);
+    initializeConfig(serverUrl);
+    initializeApi();
+    initializeSocket();
+  }, [serverUrl]);
+
+  /*
+   * --------------------------------------------------
+   * Load conversations + Socket listeners
+   * --------------------------------------------------
+   */
+
+  useEffect(() => {
+    if (!senderId) return;
+
+    const socket = getSocket();
+
+    if (!socket) {
+      console.error(
+        "Socket is not initialized"
+      );
+      return;
+    }
+
     const initializeWidget = async () => {
       try {
-        const userConversations = await getUserConversations(senderId);
+        const userConversations =
+          await getUserConversations(senderId);
 
         setConversations(userConversations);
 
-        if (userConversations.length > 0 && !isMobile) {
-          setSelectedConversation(userConversations[0]);
+        if (
+          userConversations.length > 0 &&
+          !isMobile
+        ) {
+          setSelectedConversation(
+            userConversations[0]
+          );
         }
       } catch (error) {
-        console.error(error);
+        console.error(
+          "Failed to load conversations:",
+          error
+        );
       }
     };
 
     initializeWidget();
 
-    socket.on("newMessage", (newMessage) => {
-      setMessages((prev) => [...prev, newMessage]);
-    });
+    /*
+     * ------------------------------------------------
+     * New message
+     * ------------------------------------------------
+     */
+
+    const handleNewMessage = (newMessage) => {
+      setMessages((prev) => [
+        ...prev,
+        newMessage,
+      ]);
+    };
+
+    /*
+     * ------------------------------------------------
+     * Edited message
+     * ------------------------------------------------
+     */
+
+    const handleMessageUpdated = (
+      updatedMessage
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id
+            ? updatedMessage
+            : msg
+        )
+      );
+    };
+
+    /*
+     * ------------------------------------------------
+     * Deleted message
+     * ------------------------------------------------
+     */
+
+    const handleMessageDeleted = (
+      deletedMessage
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === deletedMessage._id
+            ? deletedMessage
+            : msg
+        )
+      );
+    };
+
+    /*
+     * ------------------------------------------------
+     * Socket listeners
+     * ------------------------------------------------
+     */
+
+    socket.on(
+      "newMessage",
+      handleNewMessage
+    );
+
+    socket.on(
+      "messageUpdated",
+      handleMessageUpdated
+    );
+
+    socket.on(
+      "messageDeleted",
+      handleMessageDeleted
+    );
+
+    /*
+     * ------------------------------------------------
+     * Cleanup
+     * ------------------------------------------------
+     */
 
     return () => {
-      socket.off("newMessage");
+      socket.off(
+        "newMessage",
+        handleNewMessage
+      );
+
+      socket.off(
+        "messageUpdated",
+        handleMessageUpdated
+      );
+
+      socket.off(
+        "messageDeleted",
+        handleMessageDeleted
+      );
     };
   }, [senderId]);
 
-  // Load messages whenever conversation changes
+  /*
+   * --------------------------------------------------
+   * Load messages whenever conversation changes
+   * --------------------------------------------------
+   */
+
   useEffect(() => {
     if (!selectedConversation) return;
 
     const loadConversation = async () => {
       try {
-        setConversationId(selectedConversation.conversationId);
+        const selectedConversationId =
+          selectedConversation.conversationId;
 
-        const previousMessages = await getMessages(
-          selectedConversation.conversationId
+        setConversationId(
+          selectedConversationId
         );
+
+        const previousMessages =
+          await getMessages(
+            selectedConversationId
+          );
 
         setMessages(previousMessages);
+
         const socket = getSocket();
 
-        socket.emit(
-          "joinConversation",
-          selectedConversation.conversationId
-        );
+        if (socket) {
+          socket.emit(
+            "joinConversation",
+            selectedConversationId
+          );
+        }
       } catch (error) {
-        console.error(error);
+        console.error(
+          "Failed to load messages:",
+          error
+        );
       }
     };
 
     loadConversation();
   }, [selectedConversation]);
 
+  /*
+   * --------------------------------------------------
+   * Send message
+   * --------------------------------------------------
+   */
+
   const sendMessage = () => {
     if (!message.trim()) return;
     if (!conversationId) return;
+
     const socket = getSocket();
+
+    if (!socket) {
+      console.error(
+        "Socket is not initialized"
+      );
+      return;
+    }
 
     socket.emit("sendMessage", {
       conversationId,
       senderId,
-      content: message,
+      content: message.trim(),
       messageType: "text",
     });
 
     setMessage("");
   };
 
-  const handleConversationSelect = (conversation) => {
-    console.log("clicked");
-    console.log(conversation);
-    console.log("showChat before:", showChat);
+  /*
+   * --------------------------------------------------
+   * Select conversation
+   * --------------------------------------------------
+   */
 
+  const handleConversationSelect = (
+    conversation
+  ) => {
     setSelectedConversation(conversation);
 
     if (isMobile) {
-        setShowChat(true);
+      setShowChat(true);
     }
   };
 
-  const handleStartChat = async (targetUserId) => {
+  /*
+   * --------------------------------------------------
+   * Start one-to-one chat
+   * --------------------------------------------------
+   */
+
+  const handleStartChat = async (
+    targetUserId
+  ) => {
     try {
-      const session = await createOrGetDirect(senderId, targetUserId);
+      const session =
+        await createOrGetDirect(
+          senderId,
+          targetUserId
+        );
 
       const updatedConversations =
-        await getUserConversations(senderId);
+        await getUserConversations(
+          senderId
+        );
 
-      setConversations(updatedConversations);
-
-      const conversation = updatedConversations.find(
-        (item) =>
-          item.conversationId === session.conversationId
+      setConversations(
+        updatedConversations
       );
 
+      const conversation =
+        updatedConversations.find(
+          (item) =>
+            item.conversationId ===
+            session.conversationId
+        );
+
       if (conversation) {
-        setSelectedConversation(conversation);
+        setSelectedConversation(
+          conversation
+        );
 
         if (isMobile) {
           setShowChat(true);
@@ -153,33 +337,51 @@ useEffect(() => {
 
       setIsChatModalOpen(false);
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Failed to start chat:",
+        error
+      );
     }
   };
+
+  /*
+   * --------------------------------------------------
+   * Create group
+   * --------------------------------------------------
+   */
 
   const handleStartGroupChat = async (
     groupName,
     participants
   ) => {
     try {
-      const newGroup = await createGroup(
-        groupName,
-        senderId,
-        participants
-      );
+      const newGroup =
+        await createGroup(
+          groupName,
+          senderId,
+          participants
+        );
 
       const updatedConversations =
-        await getUserConversations(senderId);
+        await getUserConversations(
+          senderId
+        );
 
-      setConversations(updatedConversations);
-
-      const conversation = updatedConversations.find(
-        (item) =>
-          item.conversationId === newGroup.conversationId
+      setConversations(
+        updatedConversations
       );
 
+      const conversation =
+        updatedConversations.find(
+          (item) =>
+            item.conversationId ===
+            newGroup.conversationId
+        );
+
       if (conversation) {
-        setSelectedConversation(conversation);
+        setSelectedConversation(
+          conversation
+        );
 
         if (isMobile) {
           setShowChat(true);
@@ -188,33 +390,110 @@ useEffect(() => {
 
       setIsGroupModalOpen(false);
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Failed to create group:",
+        error
+      );
     }
   };
 
-  const filteredConversations = conversations.filter(
-    (conversation) =>
-      conversation.displayName
-        .toLowerCase()
-        .includes(searchText.toLowerCase())
-  );
+  /*
+   * --------------------------------------------------
+   * Edit message
+   * --------------------------------------------------
+   */
+
+  const handleEditMessage = (
+    messageId,
+    content
+  ) => {
+    if (!content.trim()) return;
+
+    const socket = getSocket();
+
+    if (!socket) {
+      console.error(
+        "Socket is not initialized"
+      );
+      return;
+    }
+
+    socket.emit("editMessage", {
+      messageId,
+      senderId,
+      content: content.trim(),
+    });
+  };
+
+  /*
+   * --------------------------------------------------
+   * Delete message
+   * --------------------------------------------------
+   */
+
+  const handleDeleteMessage = (
+    messageId
+  ) => {
+    const socket = getSocket();
+
+    if (!socket) {
+      console.error(
+        "Socket is not initialized"
+      );
+      return;
+    }
+
+    socket.emit("deleteMessage", {
+      messageId,
+      senderId,
+    });
+  };
+
+  /*
+   * --------------------------------------------------
+   * Search conversations
+   * --------------------------------------------------
+   */
+
+  const filteredConversations =
+    conversations.filter(
+      (conversation) =>
+        conversation.displayName
+          ?.toLowerCase()
+          .includes(
+            searchText.toLowerCase()
+          )
+    );
+
+  /*
+   * --------------------------------------------------
+   * UI
+   * --------------------------------------------------
+   */
 
   return (
     <div className="rtc-widget-container">
 
+      {/* Conversation Sidebar */}
+
       <div
         className={`rtc-sidebar ${
-          isMobile && showChat ? "rtc-hide-mobile" : ""
+          isMobile && showChat
+            ? "rtc-hide-mobile"
+            : ""
         }`}
       >
         <div className="rtc-sidebar-header">
 
           <div className="rtc-sidebar-title">
             <h3>
-              Current User: {currentUser?.displayName}
+              Current User:{" "}
+              {currentUser?.displayName}
             </h3>
 
-            <span>{conversations.length}</span>
+            <span>
+              {conversations.length}
+            </span>
           </div>
 
           <div className="rtc-sidebar-buttons">
@@ -243,20 +522,28 @@ useEffect(() => {
             placeholder="🔍 Search conversations..."
             value={searchText}
             onChange={(e) =>
-              setSearchText(e.target.value)
+              setSearchText(
+                e.target.value
+              )
             }
           />
 
         </div>
 
         <ConversationList
-          conversations={filteredConversations}
-          selectedConversation={selectedConversation}
+          conversations={
+            filteredConversations
+          }
+          selectedConversation={
+            selectedConversation
+          }
           setSelectedConversation={
             handleConversationSelect
           }
         />
       </div>
+
+      {/* Chat Section */}
 
       <div
         className={`rtc-chat-section ${
@@ -276,9 +563,20 @@ useEffect(() => {
             selectedConversation
           }
           currentUser={currentUser}
-          onBack={() => setShowChat(false)}
+          users={users}
+          onBack={() =>
+            setShowChat(false)
+          }
+          onEditMessage={
+            handleEditMessage
+          }
+          onDeleteMessage={
+            handleDeleteMessage
+          }
         />
       </div>
+
+      {/* New Chat Modal */}
 
       <NewChatModal
         currentUser={senderId}
@@ -287,8 +585,12 @@ useEffect(() => {
         onClose={() =>
           setIsChatModalOpen(false)
         }
-        onStartChat={handleStartChat}
+        onStartChat={
+          handleStartChat
+        }
       />
+
+      {/* New Group Modal */}
 
       <NewGroupModal
         currentUser={senderId}
@@ -297,8 +599,11 @@ useEffect(() => {
         onClose={() =>
           setIsGroupModalOpen(false)
         }
-        onCreateGroup={handleStartGroupChat}
+        onCreateGroup={
+          handleStartGroupChat
+        }
       />
+
     </div>
   );
 }

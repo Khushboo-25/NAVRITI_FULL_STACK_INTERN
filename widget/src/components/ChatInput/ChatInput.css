@@ -53,3 +53,41 @@
 .rtc-chat-input-container .rtc-send-button:active{
     transform:scale(.96);
 }
+
+.rtc-chat-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rtc-mention-list {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 220px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  margin-bottom: 6px;
+  padding: 4px;
+  z-index: 100;
+}
+
+.rtc-mention-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rtc-mention-item:hover {
+  background: #f1f3f5;
+}

@@ -2,7 +2,12 @@ import {useEffect,useRef} from "react";
 
 import MessageItem from "../MessageItem/MessageItem";
 import "./MessageList.css";
-function MessageList({ messages, currentUser }) {
+function MessageList({ 
+  messages, 
+  currentUser,
+  onEditMessage,
+  onDeleteMessage,
+ }) {
   
   const messagesEndRef = useRef(null);
 
@@ -21,6 +26,8 @@ function MessageList({ messages, currentUser }) {
           key={msg._id}
           message={msg}
           currentUser={currentUser}
+          onEditMessage={onEditMessage}
+          onDeleteMessage={onDeleteMessage}
         />
       ))}
       <div ref={messagesEndRef} />

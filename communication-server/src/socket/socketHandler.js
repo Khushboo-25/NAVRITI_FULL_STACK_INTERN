@@ -28,6 +28,80 @@ const socketHandler = (io) => {
             }
         });
 
+        //Handle editing messages
+        socket.on("editMessage", async (data) => {
+            try {
+                const message = await Message.findById(data.messageId);
+
+                if (!message) {
+                return;
+                }
+
+                // Only the sender can edit their message
+                if (message.senderId !== data.senderId) {
+                return;
+                }
+
+                message.content = data.content;
+
+                await message.save();
+
+                // Notify everyone in the conversation
+                io.to(message.conversationId.toString()).emit(
+                "messageUpdated",
+                message
+                );
+
+                console.log("Message Edited:", message._id);
+            } catch (error) {
+                console.error(
+                "Error editing message:",
+                error.message
+                );
+            }
+        });
+
+
+        //Delete the message
+        socket.on("deleteMessage", async (data) => {
+            try {
+                const message = await Message.findById(
+                data.messageId
+                );
+
+                if (!message) {
+                console.error("Message not found");
+                return;
+                }
+
+                // Only sender can delete their own message
+                if (message.senderId !== data.senderId) {
+                console.error(
+                    "User is not allowed to delete this message"
+                );
+                return;
+                }
+
+                message.isDeleted = true;
+
+                await message.save();
+
+                io.to(message.conversationId.toString()).emit(
+                "messageDeleted",
+                message
+                );
+
+                console.log(
+                "Message Deleted:",
+                message._id
+                );
+            } catch (error) {
+                console.error(
+                "Error deleting message:",
+                error.message
+                );
+            }
+            });
         
         socket.on('disconnect', () => {
             console.log(`user disconnected: ${socket.id}`);
