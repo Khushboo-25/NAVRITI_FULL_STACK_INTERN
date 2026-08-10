@@ -1,10 +1,8 @@
 import CommunicationWidget from "@rtc-widget/react";
 import "@rtc-widget/react/style.css";
 
-const currentUser = {
-  userId: "user-1",
-  displayName: "User 1",
-};
+const currentUser = 
+  { userId: "user-14", displayName: "Khushboo14" };
 
 const users = [
   currentUser,
@@ -16,6 +14,15 @@ const users = [
     userId: "user-3",
     displayName: "User 3",
   },
+  { userId: "user-8", displayName: "Khushboo" },
+  { userId: "user-9", displayName: "Prince" },
+  { userId: "user-10", displayName: "Rahul" },
+  { userId: "user-12", displayName: "Khushboo12" },
+  { userId: "user-13", displayName: "Khushboo13" },
+  { userId: "user-14", displayName: "Khushboo14" },
+  { userId: "user-15", displayName: "Khushboo15" },
+  { userId: "user-16", displayName: "Khushboo16" },
+  { userId: "user-17", displayName: "Khushboo17" },
 ];
 
 function App() {

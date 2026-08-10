@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import {
   initializeSocket,
@@ -42,6 +42,7 @@ function WidgetContainer({
 
   const [selectedConversation, setSelectedConversation] =
     useState(null);
+  const selectedConversationRef = useRef(null);
 
   const [searchText, setSearchText] =
     useState("");
@@ -55,6 +56,9 @@ function WidgetContainer({
   const [showChat, setShowChat] =
     useState(false);
 
+  const [mentionedConversations, setMentionedConversations] =
+  useState(new Set());
+
   /*
    * --------------------------------------------------
    * Initialize API + Socket
@@ -66,6 +70,8 @@ function WidgetContainer({
     initializeApi();
     initializeSocket();
   }, [serverUrl]);
+
+
 
   /*
    * --------------------------------------------------
@@ -96,8 +102,14 @@ function WidgetContainer({
           userConversations.length > 0 &&
           !isMobile
         ) {
+          const firstConversation =
+            userConversations[0];
+
+          selectedConversationRef.current =
+            firstConversation.conversationId.toString();
+
           setSelectedConversation(
-            userConversations[0]
+            firstConversation
           );
         }
       } catch (error) {
@@ -117,6 +129,36 @@ function WidgetContainer({
      */
 
     const handleNewMessage = (newMessage) => {
+      
+      // Check whether current user was mentioned
+      const mentionRegex = new RegExp(
+        `@${currentUser?.displayName}`,
+        "i"
+      );
+
+      const wasMentioned =
+        mentionRegex.test(newMessage.content || "");
+
+      if (wasMentioned) {
+        setMentionedConversations((prev) => {
+          const updated = new Set(prev);
+
+          updated.add(
+            newMessage.conversationId.toString()
+          );
+
+          return updated;
+        });
+      }
+      const currentConversationId =
+        selectedConversationRef.current;
+      if (
+        newMessage.conversationId?.toString() !==
+        currentConversationId?.toString()
+      ) {
+        return;
+      }
+
       setMessages((prev) => [
         ...prev,
         newMessage,
@@ -283,15 +325,28 @@ function WidgetContainer({
    * --------------------------------------------------
    */
 
-  const handleConversationSelect = (
-    conversation
-  ) => {
-    setSelectedConversation(conversation);
+  const handleConversationSelect = (conversation) => {
+      const conversationId =
+        conversation.conversationId.toString();
 
-    if (isMobile) {
-      setShowChat(true);
-    }
-  };
+      // Update ref immediately
+      selectedConversationRef.current =
+        conversationId;
+
+      setSelectedConversation(conversation);
+
+      setMentionedConversations((prev) => {
+        const updated = new Set(prev);
+
+        updated.delete(conversationId);
+
+        return updated;
+      });
+
+      if (isMobile) {
+        setShowChat(true);
+      }
+    };
 
   /*
    * --------------------------------------------------
@@ -326,9 +381,10 @@ function WidgetContainer({
         );
 
       if (conversation) {
-        setSelectedConversation(
-          conversation
-        );
+        selectedConversationRef.current =
+          conversation.conversationId.toString();
+
+        setSelectedConversation(conversation);
 
         if (isMobile) {
           setShowChat(true);
@@ -379,9 +435,10 @@ function WidgetContainer({
         );
 
       if (conversation) {
-        setSelectedConversation(
-          conversation
-        );
+        selectedConversationRef.current =
+          conversation.conversationId.toString();
+
+        setSelectedConversation(conversation);
 
         if (isMobile) {
           setShowChat(true);
@@ -540,6 +597,7 @@ function WidgetContainer({
           setSelectedConversation={
             handleConversationSelect
           }
+          mentionedConversations={mentionedConversations}
         />
       </div>
 

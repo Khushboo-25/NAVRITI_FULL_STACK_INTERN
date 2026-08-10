@@ -45,12 +45,14 @@ function ChatInput({
     words[words.length - 1] =
       `@${user.displayName}`;
 
-    const newMessage =
-      words.join(" ") + " ";
-
-    setMessage(newMessage);
+    setMessage(words.join(" ") + " ");
     setShowMentions(false);
     setMentionText("");
+  };
+
+  const handleSend = () => {
+    sendMessage();
+    setShowMentions(false);
   };
 
   return (
@@ -82,8 +84,7 @@ function ChatInput({
         onChange={handleChange}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            sendMessage();
-            setShowMentions(false);
+            handleSend();
           }
 
           if (e.key === "Escape") {
@@ -94,10 +95,7 @@ function ChatInput({
 
       <button
         className="rtc-send-button"
-        onClick={() => {
-          sendMessage();
-          setShowMentions(false);
-        }}
+        onClick={handleSend}
       >
         ➤
       </button>
