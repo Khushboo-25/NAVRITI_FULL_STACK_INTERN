@@ -1,130 +1,208 @@
-.rtc-message{
-    display:flex;
-    flex-direction:column;
-    margin:12px;
+.rtc-message {
+    display: flex;
+    flex-direction: column;
+
+    margin: 12px;
 }
 
-.rtc-message.rtc-mine{
-    align-items:flex-end;
+.rtc-message.rtc-mine {
+    align-items: flex-end;
 }
 
-.rtc-message.rtc-other{
-    align-items:flex-start;
+.rtc-message.rtc-other {
+    align-items: flex-start;
 }
 
-.rtc-sender{
-    font-size:12px;
-    color:#666;
-    margin-bottom:4px;
-    font-weight:600;
+
+/* Sender */
+
+.rtc-sender {
+    margin-bottom: 4px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #666;
 }
 
-.rtc-bubble{
-    max-width:70%;
-    padding:10px 14px;
 
-    border-radius:16px;
+/* Message bubble */
 
-    word-wrap:break-word;
+.rtc-bubble {
+    max-width: 70%;
 
-    display:flex;
-    flex-direction:column;
-    gap:6px;
+    padding: 10px 14px;
 
-    box-shadow:0 1px 2px rgba(0,0,0,.08);
+    border-radius: 16px;
+
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-.rtc-message.rtc-mine .rtc-bubble{
-    background:#c1fde0;
-    color:rgb(97, 95, 95);
 
-    border-bottom-right-radius:4px;
+/* My message */
+
+.rtc-message.rtc-mine .rtc-bubble {
+    background: #c1fde0;
+
+    color: rgb(97, 95, 95);
+
+    border-bottom-right-radius: 4px;
 }
 
-.rtc-message.rtc-other .rtc-bubble{
-    background:#d9e0fb;
-    color:#222;
 
-    border-bottom-left-radius:4px;
+/* Other user's message */
+
+.rtc-message.rtc-other .rtc-bubble {
+    background: #d9e0fb;
+
+    color: #222;
+
+    border-bottom-left-radius: 4px;
 }
 
-.rtc-message-time{
-    align-self:flex-end;
 
-    font-size:11px;
+/* Message time */
 
-    opacity:.75;
+.rtc-message-time {
+    align-self: flex-end;
+
+    font-size: 11px;
+
+    opacity: 0.75;
+
+    white-space: nowrap;
 }
-/* Edit message */
+
+
+/* ================================
+   Edit Message
+================================ */
 
 .rtc-message-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
 }
 
 .rtc-message-edit input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  outline: none;
-  font-size: 14px;
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid #ccc;
+    border-radius: 8px;
+
+    outline: none;
+
+    font-size: 14px;
 }
 
 .rtc-message-edit input:focus {
-  border-color: #888;
+    border-color: #888;
 }
 
+
+/* Edit actions */
+
 .rtc-message-actions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+    display: flex;
+
+    gap: 6px;
+
+    justify-content: flex-end;
 }
 
 .rtc-message-actions button {
-  border: none;
-  border-radius: 6px;
-  padding: 5px 9px;
-  font-size: 12px;
-  cursor: pointer;
+    border: none;
+
+    border-radius: 6px;
+
+    padding: 5px 9px;
+
+    font-size: 12px;
+
+    cursor: pointer;
 }
 
+
+/* Edit button */
+
 .rtc-edit-button {
-  margin-top: 2px;
-  border: none;
-  background: transparent;
-  font-size: 11px;
-  color: #555;
-  cursor: pointer;
-  align-self: flex-end;
+    margin-top: 2px;
+
+    border: none;
+
+    background: transparent;
+
+    font-size: 11px;
+
+    color: #555;
+
+    cursor: pointer;
+
+    align-self: flex-end;
 }
 
 .rtc-edit-button:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
+
+
+/* ================================
+   Deleted Message
+================================ */
+
 .rtc-deleted-message {
-  font-style: italic;
-  opacity: 0.65;
+    font-style: italic;
+
+    opacity: 0.65;
 }
+
+
+/* ================================
+   Delete Button
+================================ */
+
 .rtc-delete-button {
-  margin-top: 2px;
-  border: none;
-  background: transparent;
-  color: #b94a48;
-  font-size: 11px;
-  padding: 4px 6px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+    margin-top: 2px;
+
+    border: none;
+
+    background: transparent;
+
+    color: #b94a48;
+
+    font-size: 11px;
+
+    padding: 4px 6px;
+
+    border-radius: 5px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
 }
 
 .rtc-delete-button:hover {
-  background: rgba(185, 74, 72, 0.1);
-  color: #a33a38;
+    background: rgba(185, 74, 72, 0.1);
+
+    color: #a33a38;
 }
 
 .rtc-delete-button:active {
-  background: rgba(185, 74, 72, 0.16);
+    background: rgba(185, 74, 72, 0.16);
 }

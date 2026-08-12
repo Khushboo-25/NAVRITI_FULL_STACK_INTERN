@@ -1,176 +1,332 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./NewGroupModal.css";
 
 function NewGroupModal({
-  currentUser,
-  users,
-  isOpen,
-  onClose,
-  onCreateGroup,
+    currentUser,
+    users = [],
+    isOpen,
+    onClose,
+    onCreateGroup,
 }) {
-  const [groupName, setGroupName] = useState("");
-  const [search, setSearch] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]);
+    const [groupName, setGroupName] = useState("");
+    const [search, setSearch] = useState("");
+    const [selectedUsers, setSelectedUsers] =
+        useState([]);
 
-  if (!isOpen) return null;
+    const [isCreating, setIsCreating] =
+        useState(false);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.userId !== currentUser &&
-      user.displayName
-        .toLowerCase()
-        .includes(search.toLowerCase())
-  );
 
-  const toggleUser = (userId) => {
-    if (selectedUsers.includes(userId)) {
-      setSelectedUsers((prev) =>
-        prev.filter((id) => id !== userId)
-      );
-    } else {
-      setSelectedUsers((prev) => [...prev, userId]);
+    /*
+     * Reset state whenever modal closes
+     */
+
+    useEffect(() => {
+        if (!isOpen) {
+            setGroupName("");
+            setSearch("");
+            setSelectedUsers([]);
+            setIsCreating(false);
+        }
+    }, [isOpen]);
+
+
+    if (!isOpen) {
+        return null;
     }
-  };
 
-  const resetModal = () => {
-    setGroupName("");
-    setSearch("");
-    setSelectedUsers([]);
-    onClose();
-  };
 
-  return (
-    <div className="rtc-modal-overlay">
-      <div className="rtc-modal">
+    /*
+     * Filter users
+     */
 
-        <div className="rtc-modal-header">
-          <h2>👥 Create Group</h2>
-        </div>
+    const filteredUsers = users.filter(
+        (user) =>
+            user.userId !== currentUser &&
+            user.displayName
+                ?.toLowerCase()
+                .includes(
+                    search.toLowerCase()
+                )
+    );
 
-        <input
-          className="rtc-group-name-input"
-          type="text"
-          placeholder="Group Name"
-          value={groupName}
-          onChange={(e) =>
-            setGroupName(e.target.value)
-          }
-        />
 
-        <input
-          className="rtc-user-search"
-          type="text"
-          placeholder="Search members..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-        />
+    /*
+     * Select / deselect user
+     */
 
-        {selectedUsers.length > 0 && (
-          <div className="rtc-selected-members">
+    const toggleUser = (userId) => {
+        setSelectedUsers((prev) => {
+            if (prev.includes(userId)) {
+                return prev.filter(
+                    (id) => id !== userId
+                );
+            }
 
-            {selectedUsers.map((id) => {
-              const user = users.find(
-                (u) => u.userId === id
-              );
+            return [...prev, userId];
+        });
+    };
 
-              return (
-                <div
-                  key={id}
-                  className="rtc-member-chip"
-                >
-                  {user.displayName}
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleUser(id)
-                    }
-                  >
-                    ✕
-                  </button>
-                </div>
-              );
-            })}
+    /*
+     * Cancel
+     */
 
-          </div>
-        )}
+    const handleCancel = () => {
+        setGroupName("");
+        setSearch("");
+        setSelectedUsers([]);
 
-        <div className="rtc-user-list">
+        onClose();
+    };
 
-          {filteredUsers.map((user) => (
 
+    /*
+     * Create group
+     */
+
+    const handleCreateGroup = async () => {
+        const trimmedGroupName =
+            groupName.trim();
+
+        if (
+            !trimmedGroupName ||
+            selectedUsers.length === 0 ||
+            isCreating
+        ) {
+            return;
+        }
+
+        try {
+            setIsCreating(true);
+
+            await onCreateGroup(
+                trimmedGroupName,
+                selectedUsers
+            );
+
+            setGroupName("");
+            setSearch("");
+            setSelectedUsers([]);
+
+        } catch (error) {
+            console.error(
+                "Failed to create group:",
+                error
+            );
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+
+    return (
+        <div
+            className="rtc-modal-overlay"
+            onClick={handleCancel}
+        >
             <div
-              key={user.userId}
-              className={`rtc-user-item ${
-                selectedUsers.includes(user.userId)
-                  ? "rtc-selected-user"
-                  : ""
-              }`}
-              onClick={() =>
-                toggleUser(user.userId)
-              }
+                className="rtc-modal"
+                onClick={(e) =>
+                    e.stopPropagation()
+                }
             >
 
-              <div className="rtc-user-avatar">
-                {user.displayName
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
+                {/* Header */}
 
-              <div className="rtc-user-name">
-                {user.displayName}
-              </div>
+                <div className="rtc-modal-header">
+                    <h2>
+                        👥 Create Group
+                    </h2>
+                </div>
 
-              {selectedUsers.includes(
-                user.userId
-              ) && (
-                <span className="rtc-check">
-                  ✓
-                </span>
-              )}
+
+                {/* Group name */}
+
+                <input
+                    className="rtc-group-name-input"
+                    type="text"
+                    placeholder="Group Name"
+                    value={groupName}
+                    onChange={(e) =>
+                        setGroupName(
+                            e.target.value
+                        )
+                    }
+                    maxLength={100}
+                    autoFocus
+                />
+
+
+                {/* Search members */}
+
+                <input
+                    className="rtc-user-search"
+                    type="text"
+                    placeholder="Search members..."
+                    value={search}
+                    onChange={(e) =>
+                        setSearch(
+                            e.target.value
+                        )
+                    }
+                />
+
+
+                {/* Selected members */}
+
+                {selectedUsers.length > 0 && (
+                    <div className="rtc-selected-members">
+
+                        {selectedUsers.map((id) => {
+                            const user =
+                                users.find(
+                                    (u) =>
+                                        u.userId ===
+                                        id
+                                );
+
+                            if (!user) {
+                                return null;
+                            }
+
+                            return (
+                                <div
+                                    key={id}
+                                    className="rtc-member-chip"
+                                >
+                                    <span>
+                                        {
+                                            user.displayName
+                                        }
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            toggleUser(
+                                                id
+                                            )
+                                        }
+                                        disabled={
+                                            isCreating
+                                        }
+                                        aria-label={`Remove ${user.displayName}`}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            );
+                        })}
+
+                    </div>
+                )}
+
+
+                {/* User list */}
+
+                <div className="rtc-user-list">
+
+                    {filteredUsers.length === 0 ? (
+                        <div className="rtc-no-users">
+                            No users found
+                        </div>
+                    ) : (
+                        filteredUsers.map(
+                            (user) => {
+                                const isSelected =
+                                    selectedUsers.includes(
+                                        user.userId
+                                    );
+
+                                return (
+                                    <button
+                                        key={
+                                            user.userId
+                                        }
+                                        type="button"
+                                        className={`rtc-user-item ${
+                                            isSelected
+                                                ? "rtc-selected-user"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            toggleUser(
+                                                user.userId
+                                            )
+                                        }
+                                        disabled={
+                                            isCreating
+                                        }
+                                    >
+
+                                        <div className="rtc-user-avatar">
+                                            {user.displayName
+                                                ?.charAt(
+                                                    0
+                                                )
+                                                .toUpperCase() ||
+                                                "?"}
+                                        </div>
+
+                                        <div className="rtc-user-name">
+                                            {
+                                                user.displayName
+                                            }
+                                        </div>
+
+                                        {isSelected && (
+                                            <span className="rtc-check">
+                                                ✓
+                                            </span>
+                                        )}
+
+                                    </button>
+                                );
+                            }
+                        )
+                    )}
+
+                </div>
+
+
+                {/* Actions */}
+
+                <div className="rtc-modal-buttons">
+
+                    <button
+                        type="button"
+                        className="rtc-cancel-btn"
+                        onClick={handleCancel}
+                        disabled={isCreating}
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="button"
+                        className="rtc-primary-btn"
+                        disabled={
+                            !groupName.trim() ||
+                            selectedUsers.length ===
+                                0 ||
+                            isCreating
+                        }
+                        onClick={
+                            handleCreateGroup
+                        }
+                    >
+                        {isCreating
+                            ? "Creating..."
+                            : "Create Group"}
+                    </button>
+
+                </div>
 
             </div>
-
-          ))}
-
         </div>
-
-        <div className="rtc-modal-buttons">
-
-          <button
-            className="rtc-cancel-btn"
-            onClick={resetModal}
-          >
-            Cancel
-          </button>
-
-          <button
-            className="rtc-primary-btn"
-            disabled={
-              !groupName.trim() ||
-              selectedUsers.length === 0
-            }
-            onClick={() => {
-              onCreateGroup(
-                groupName,
-                selectedUsers
-              );
-
-              setGroupName("");
-              setSearch("");
-              setSelectedUsers([]);
-            }}
-          >
-            Create Group
-          </button>
-
-        </div>
-
-      </div>
-    </div>
-  );
+    );
 }
 
 export default NewGroupModal;

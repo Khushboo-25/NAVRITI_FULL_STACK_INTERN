@@ -2,106 +2,183 @@ import { useState } from "react";
 import "./ChatInput.css";
 
 function ChatInput({
-  message,
-  setMessage,
-  sendMessage,
-  users = [],
+    message,
+    setMessage,
+    sendMessage,
+    users = [],
+    currentUser,
 }) {
-  const [showMentions, setShowMentions] =
-    useState(false);
+    const [showMentions, setShowMentions] =
+        useState(false);
 
-  const [mentionText, setMentionText] =
-    useState("");
+    const [mentionText, setMentionText] =
+        useState("");
 
-  const handleChange = (e) => {
-    const value = e.target.value;
 
-    setMessage(value);
+    /*
+     * --------------------------------------------
+     * Handle typing
+     * --------------------------------------------
+     */
 
-    const currentWord =
-      value.split(/\s/).pop() || "";
+    const handleChange = (e) => {
+        const value = e.target.value;
 
-    if (currentWord.startsWith("@")) {
-      const searchText =
-        currentWord.slice(1).toLowerCase();
+        setMessage(value);
 
-      setMentionText(searchText);
-      setShowMentions(true);
-    } else {
-      setMentionText("");
-      setShowMentions(false);
-    }
-  };
+        const currentWord =
+            value.split(/\s/).pop() || "";
 
-  const filteredUsers = users.filter((user) =>
-    user.displayName
-      ?.toLowerCase()
-      .includes(mentionText)
-  );
+        if (currentWord.startsWith("@")) {
+            const searchText =
+                currentWord
+                    .slice(1)
+                    .toLowerCase();
 
-  const handleMentionSelect = (user) => {
-    const words = message.split(/\s/);
-
-    words[words.length - 1] =
-      `@${user.displayName}`;
-
-    setMessage(words.join(" ") + " ");
-    setShowMentions(false);
-    setMentionText("");
-  };
-
-  const handleSend = () => {
-    sendMessage();
-    setShowMentions(false);
-  };
-
-  return (
-    <div className="rtc-chat-input-container">
-
-      {showMentions &&
-        filteredUsers.length > 0 && (
-          <div className="rtc-mention-list">
-            {filteredUsers.map((user) => (
-              <button
-                key={user.userId}
-                type="button"
-                className="rtc-mention-item"
-                onClick={() =>
-                  handleMentionSelect(user)
-                }
-              >
-                @{user.displayName}
-              </button>
-            ))}
-          </div>
-        )}
-
-      <input
-        className="rtc-chat-input"
-        type="text"
-        placeholder="Type a message..."
-        value={message}
-        onChange={handleChange}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            handleSend();
-          }
-
-          if (e.key === "Escape") {
+            setMentionText(searchText);
+            setShowMentions(true);
+        } else {
+            setMentionText("");
             setShowMentions(false);
-          }
-        }}
-      />
+        }
+    };
 
-      <button
-        className="rtc-send-button"
-        onClick={handleSend}
-      >
-        ➤
-      </button>
 
-    </div>
-  );
+    /*
+     * --------------------------------------------
+     * Filter users for mention
+     * --------------------------------------------
+     */
+
+    const filteredUsers = users
+        .filter(
+            (user) =>
+                user.userId !==
+                currentUser?.userId
+        )
+        .filter((user) =>
+            user.displayName
+                ?.toLowerCase()
+                .includes(mentionText)
+        );
+
+
+    /*
+     * --------------------------------------------
+     * Select mention
+     * --------------------------------------------
+     */
+
+    const handleMentionSelect = (user) => {
+        const words = message.split(/\s/);
+
+        words[words.length - 1] =
+            `@${user.displayName}`;
+
+        setMessage(
+            words.join(" ") + " "
+        );
+
+        setShowMentions(false);
+        setMentionText("");
+    };
+
+
+    /*
+     * --------------------------------------------
+     * Send message
+     * --------------------------------------------
+     */
+
+    const handleSend = () => {
+        if (!message.trim()) {
+            return;
+        }
+
+        sendMessage();
+
+        setShowMentions(false);
+        setMentionText("");
+    };
+
+
+    /*
+     * --------------------------------------------
+     * Keyboard handling
+     * --------------------------------------------
+     */
+
+    const handleKeyDown = (e) => {
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+            handleSend();
+
+            return;
+        }
+
+        if (e.key === "Escape") {
+            setShowMentions(false);
+            setMentionText("");
+        }
+    };
+
+
+    return (
+        <div className="rtc-chat-input-container">
+
+            {/* Mention suggestions */}
+
+            {showMentions &&
+                filteredUsers.length > 0 && (
+                    <div className="rtc-mention-list">
+
+                        {filteredUsers.map((user) => (
+                            <button
+                                key={user.userId}
+                                type="button"
+                                className="rtc-mention-item"
+                                onClick={() =>
+                                    handleMentionSelect(
+                                        user
+                                    )
+                                }
+                            >
+                                @{user.displayName}
+                            </button>
+                        ))}
+
+                    </div>
+                )}
+
+
+            {/* Input */}
+
+            <input
+                className="rtc-chat-input"
+                type="text"
+                placeholder="Type a message..."
+                value={message}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+            />
+
+
+            {/* Send */}
+
+            <button
+                type="button"
+                className="rtc-send-button"
+                onClick={handleSend}
+                disabled={!message.trim()}
+                aria-label="Send message"
+            >
+                ➤
+            </button>
+
+        </div>
+    );
 }
 
 export default ChatInput;

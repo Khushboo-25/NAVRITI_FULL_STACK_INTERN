@@ -4,23 +4,51 @@ import { getServerUrl } from "./config";
 let socket = null;
 
 export function initializeSocket() {
-  if(!socket){
-    socket = io(getServerUrl(), {
-      transports: ["websocket"],
-    });
+    if (!socket) {
+        const serverUrl = getServerUrl();
 
-    socket.on("connect", () => {
-      console.log("Connected:", socket.id);
-    });
+        if (!serverUrl) {
+            throw new Error(
+                "Server URL is not initialized."
+            );
+        }
+        // socket = io(getServerUrl());
+        socket = io(serverUrl, {
+            transports: ["websocket"],
+        });
+        // socket = io(serverUrl);
 
-    socket.on("disconnect", (reason) => {
-      console.log("Disconnected:", reason);
-    });
-  }
+        socket.on("connect", () => {
+            console.log(
+                "Socket connected:",
+                socket.id
+            );
+        });
 
-  return socket;
+        socket.on("disconnect", (reason) => {
+            console.log(
+                "Socket disconnected:",
+                reason
+            );
+        });
+
+        socket.on("connect_error", (error) => {
+            console.error(
+                "Socket connection error:",
+                error.message
+            );
+        });
+    }
+
+    return socket;
 }
 
 export function getSocket() {
-  return socket;
+    if (!socket) {
+        throw new Error(
+            "Socket is not initialized. Call initializeSocket() first."
+        );
+    }
+
+    return socket;
 }

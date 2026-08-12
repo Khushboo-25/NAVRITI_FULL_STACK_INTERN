@@ -31,25 +31,32 @@ const socketHandler = (io) => {
         //Handle editing messages
         socket.on("editMessage", async (data) => {
             try {
-                const message = await Message.findById(data.messageId);
+                const message = await Message.findOneAndUpdate(
+                    {
+                        _id: data.messageId,
+                        senderId: data.senderId
+                    },
+                    {
+                        $set: {
+                            content: data.content
+                        }
+                    },
+                    {
+                        new: true
+                    }
+                );
 
                 if (!message) {
-                return;
+                    console.error(
+                        "Message not found or user cannot edit it"
+                    );
+                    return;
                 }
-
-                // Only the sender can edit their message
-                if (message.senderId !== data.senderId) {
-                return;
-                }
-
-                message.content = data.content;
-
-                await message.save();
 
                 // Notify everyone in the conversation
                 io.to(message.conversationId.toString()).emit(
-                "messageUpdated",
-                message
+                    "messageUpdated",
+                    message
                 );
 
                 console.log("Message Edited:", message._id);
@@ -65,26 +72,25 @@ const socketHandler = (io) => {
         //Delete the message
         socket.on("deleteMessage", async (data) => {
             try {
-                const message = await Message.findById(
-                data.messageId
+                const message = await Message.findOneAndUpdate(
+                    {
+                        _id: data.messageId,
+                        senderId: data.senderId
+                    },
+                    {
+                        $set: {
+                            isDeleted: true
+                        }
+                    },
+                    {
+                        new: true
+                    }
                 );
 
                 if (!message) {
-                console.error("Message not found");
-                return;
+                    console.error("Message not found");
+                    return;
                 }
-
-                // Only sender can delete their own message
-                if (message.senderId !== data.senderId) {
-                console.error(
-                    "User is not allowed to delete this message"
-                );
-                return;
-                }
-
-                message.isDeleted = true;
-
-                await message.save();
 
                 io.to(message.conversationId.toString()).emit(
                 "messageDeleted",
@@ -103,9 +109,18 @@ const socketHandler = (io) => {
             }
             });
         
+        socket.on("leaveConversation", (conversationId) => {
+            socket.leave(conversationId);
+
+            console.log(
+                `user ${socket.id} left conversation: ${conversationId}`
+            );
+        });
+
         socket.on('disconnect', () => {
             console.log(`user disconnected: ${socket.id}`);
         });
+
     });
 
     

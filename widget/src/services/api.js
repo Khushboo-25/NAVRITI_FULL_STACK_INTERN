@@ -10,7 +10,12 @@ export function initializeApi() {
 
   return api;
 }
-
 export function getApi() {
-  return api;
+    if (!api) {
+        throw new Error(
+            "API is not initialized. Call initializeApi() first."
+        );
+    }
+
+    return api;
 }

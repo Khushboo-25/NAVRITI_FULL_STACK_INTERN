@@ -3,75 +3,57 @@ import Participant from "../models/participant.js";
 import Message from "../models/message.js";
 
 
-
 // direct chat between two users
 export const createOrGetDirect = async (req, res) => {
   try {
+    
     const { currentUserId, targetUserId } = req.body;
+    const participantKey = [currentUserId, targetUserId]
+        .sort()
+        .join(":");
 
-    if (!currentUserId || !targetUserId) {
-      return res.status(400).json({
-        message: "currentUserId and targetUserId are required.",
-      });
+    let conversation = await Conversation.findOne({
+        participantKey,
+    });
+
+    if (!conversation) {
+        try {
+            conversation = await Conversation.create({
+                type: "direct",
+                participantKey,
+            });
+
+            await Participant.create([
+                {
+                    userId: currentUserId,
+                    conversationId: conversation._id,
+                },
+                {
+                    userId: targetUserId,
+                    conversationId: conversation._id,
+                },
+            ]);
+
+            return res.status(201).json({
+                conversationId: conversation._id,
+            });
+
+        } catch (error) {
+            // Another simultaneous request may have created it
+            if (error.code === 11000) {
+                conversation = await Conversation.findOne({
+                    participantKey,
+                });
+            } else {
+                throw error;
+            }
+        }
     }
 
-    // Find all direct conversations of current user
-    const currentUserParticipants = await Participant.find({
-      userId: currentUserId,
+    return res.status(200).json({
+        conversationId: conversation._id,
     });
 
-    for (const participant of currentUserParticipants) {
-
-      const conversation = await Conversation.findById(
-        participant.conversationId
-      );
-
-      // Skip if not found or not a direct chat
-      if (!conversation || conversation.type !== "direct") {
-        continue;
-      }
-
-      // Get all participants of this conversation
-      const conversationParticipants = await Participant.find({
-        conversationId: conversation._id,
-      });
-
-      // Direct chat must contain exactly two users
-      if (conversationParticipants.length !== 2) {
-        continue;
-      }
-
-      // Check if target user is the second participant
-      const exists = conversationParticipants.some(
-        (participant) => participant.userId === targetUserId
-      );
-
-      if (exists) {
-        return res.status(200).json({
-          conversationId: conversation._id,
-        });
-      }
-    }
-
-    // No conversation exists -> create one
-    const conversation = await Conversation.create({
-      type: "direct",
-    });
-
-    await Participant.create([
-      {
-        userId: currentUserId,
-        conversationId: conversation._id,
-      },
-      {
-        userId: targetUserId,
-        conversationId: conversation._id,
-      },
-    ]);
-
-    return res.status(201).json({
-      conversationId: conversation._id,
-    });
 
   } catch (error) {
     return res.status(500).json({
@@ -151,50 +133,97 @@ for (const conversation of conversations) {
 
 
 export const createGroup = async (req, res) => {
-  try {
-    const {
-      groupName,
-      currentUserId,
-      participants,
-    } = req.body;
+    try {
+        const {
+            groupName,
+            currentUserId,
+            participants,
+        } = req.body;
 
-    if (
-      !groupName.trim() ||
-      !currentUserId ||
-      !participants || participants.length === 0
-    ) {
-      return res.status(400).json({
-        message: "Invalid request",
-      });
+
+        // -----------------------------
+        // Validate request
+        // -----------------------------
+
+        if (
+            !groupName?.trim() ||
+            !currentUserId ||
+            !Array.isArray(participants) ||
+            participants.length === 0
+        ) {
+            return res.status(400).json({
+                message: "Invalid request",
+            });
+        }
+
+
+        // -----------------------------
+        // Remove duplicate users
+        // -----------------------------
+
+        const allParticipants = [
+            ...new Set([
+                currentUserId,
+                ...participants,
+            ]),
+        ];
+
+
+        // -----------------------------
+        // Create conversation
+        // -----------------------------
+
+        const conversation =
+            await Conversation.create({
+                type: "group",
+                displayName:
+                    groupName.trim(),
+            });
+
+
+        // -----------------------------
+        // Create participants
+        // -----------------------------
+
+        await Participant.insertMany(
+            allParticipants.map(
+                (userId) => ({
+                    userId,
+                    conversationId:
+                        conversation._id,
+                })
+            )
+        );
+
+
+        // -----------------------------
+        // Response
+        // -----------------------------
+
+        return res.status(201).json({
+            conversationId:
+                conversation._id,
+
+            displayName:
+                conversation.displayName,
+
+            participants:
+                allParticipants,
+        });
+
+    } catch (error) {
+
+        console.error(
+            "CREATE GROUP ERROR:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to create group",
+
+            error:
+                error.message,
+        });
     }
-
-    const conversation =
-      await Conversation.create({
-        type: "group",
-        displayName: groupName,
-      });
-
-    const allParticipants = [
-      currentUserId,
-      ...participants,
-    ];
-
-    await Participant.insertMany(
-      allParticipants.map((userId) => ({
-        userId,
-        conversationId: conversation._id,
-      }))
-    );
-
-    res.status(201).json({
-      conversationId: conversation._id,
-      displayName: groupName,
-      participants: allParticipants,
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
 };

@@ -1,14 +1,16 @@
 import http from 'http';
 import app from './app.js';
 import dotenv from 'dotenv';
-dotenv.config();
-const server = await import('socket.io');
-const httpServer = http.createServer(app);
+
 import connectDB from "./config/db.js";
 import socketHandler from './socket/socketHandler.js';
+import {Server} from "socket.io";
+
+dotenv.config();
+const httpServer = http.createServer(app);
 
 
-const io = new server.Server(httpServer,{
+const io = new Server(httpServer,{
     cors:{
         origin: process.env.CLIENT_URL || "*",
         methods: ["GET", "POST"]

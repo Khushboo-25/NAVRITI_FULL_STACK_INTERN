@@ -2,49 +2,55 @@ import ConversationItem from "../ConversationItem/ConversationItem";
 import "./ConversationList.css";
 
 function ConversationList({
-  conversations,
-  selectedConversation,
-  setSelectedConversation,
-  mentionedConversations,
+    conversations,
+    selectedConversation,
+    setSelectedConversation,
+    mentionedConversations,
 }) {
-  return (
-    <div className="rtc-conversation-list">
+    const selectedId =
+        selectedConversation?.conversationId?.toString();
 
-      {conversations.map((conversation) => {
-        const isMentioned =
-          mentionedConversations?.has(
-            conversation.conversationId.toString()
-          );
+    return (
+        <div className="rtc-conversation-list">
 
-        return (
-          <div
-            key={conversation.conversationId}
-            className="rtc-conversation-wrapper"
-          >
-            <ConversationItem
-              conversation={conversation}
-              selected={
-                selectedConversation?.conversationId ===
-                conversation.conversationId
-              }
-              onClick={() =>
-                setSelectedConversation(
-                  conversation
-                )
-              }
-            />
+            {conversations.map((conversation) => {
+                const conversationId =
+                    conversation.conversationId?.toString();
 
-            {isMentioned && (
-              <span className="rtc-mention-badge">
-                @
-              </span>
-            )}
-          </div>
-        );
-      })}
+                const isMentioned =
+                    mentionedConversations?.has(
+                        conversationId
+                    );
 
-    </div>
-  );
+                const isSelected =
+                    selectedId === conversationId;
+
+                return (
+                    <div
+                        key={conversationId}
+                        className="rtc-conversation-wrapper"
+                    >
+                        <ConversationItem
+                            conversation={conversation}
+                            selected={isSelected}
+                            onClick={() =>
+                                setSelectedConversation(
+                                    conversation
+                                )
+                            }
+                        />
+
+                        {isMentioned && (
+                            <span className="rtc-mention-badge">
+                                @
+                            </span>
+                        )}
+                    </div>
+                );
+            })}
+
+        </div>
+    );
 }
 
 export default ConversationList;

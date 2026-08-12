@@ -1,158 +1,202 @@
-.rtc-chat-input-container{
-    display:flex;
-    align-items:center;
-    gap:10px;
-
-    padding:15px;
-
-    border-top:1px solid #e5e5e5;
-
-    background:#fafafa;
-}
-
-.rtc-chat-input-container .rtc-chat-input{
-    flex:1;
-
-    padding:12px 16px;
-
-    border:1px solid #d9d9d9;
-    border-radius:24px;
-
-    outline:none;
-
-    font-size:15px;
-
-    transition:border-color .2s ease;
-}
-
-.rtc-chat-input-container .rtc-chat-input:focus{
-    border-color:#68abf7;
-}
-
-.rtc-chat-input-container .rtc-send-button{
-    width:44px;
-    height:44px;
-
-    border:none;
-    border-radius:50%;
-
-    background:#71b3fe;
-    color:white;
-
-    cursor:pointer;
-
-    font-size:18px;
-
-    transition:.2s;
-}
-
-.rtc-chat-input-container .rtc-send-button:hover{
-    background:#50a3fc;
-}
-
-.rtc-chat-input-container .rtc-send-button:active{
-    transform:scale(.96);
-}
 .rtc-chat-input-container {
-  position: relative;
-  display: flex;
-  align-items: center;
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 15px;
+
+    border-top: 1px solid #e5e5e5;
+
+    background: #fafafa;
 }
-/* Mention dropdown */
+
+
+/* ================================
+   Input
+================================ */
+
+.rtc-chat-input-container .rtc-chat-input {
+    flex: 1;
+
+    min-width: 0;
+
+    padding: 12px 16px;
+
+    border: 1px solid #d9d9d9;
+    border-radius: 24px;
+
+    outline: none;
+
+    font-size: 15px;
+
+    transition: border-color 0.2s ease;
+}
+
+.rtc-chat-input-container .rtc-chat-input:focus {
+    border-color: #71b3fe;
+}
+
+
+/* ================================
+   Send Button
+================================ */
+
+.rtc-chat-input-container .rtc-send-button {
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #71b3fe;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 18px;
+
+    transition:
+        transform 0.2s ease,
+        opacity 0.2s ease,
+        background 0.2s ease;
+}
+
+.rtc-chat-input-container .rtc-send-button:hover {
+    background: #5fa7f5;
+}
+
+.rtc-chat-input-container .rtc-send-button:active {
+    transform: scale(0.96);
+}
+
+
+/* Disabled send button */
+
+.rtc-chat-input-container .rtc-send-button:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+/* ================================
+   Mention Dropdown
+================================ */
 
 .rtc-mention-list {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 8px;
+    position: absolute;
 
-  width: 240px;
-  max-height: 220px;
-  overflow-y: auto;
+    bottom: calc(100% + 8px);
+    left: 8px;
 
-  padding: 6px;
+    width: 240px;
+    max-height: 220px;
 
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+    overflow-y: auto;
 
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.12),
-    0 2px 6px rgba(0, 0, 0, 0.06);
+    padding: 6px;
 
-  z-index: 1000;
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.12),
+        0 2px 6px rgba(0, 0, 0, 0.06);
+
+    z-index: 1000;
 }
 
-/* Individual user */
+
+/* ================================
+   Mention Item
+================================ */
 
 .rtc-mention-item {
-  width: 100%;
+    width: 100%;
 
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
 
-  padding: 9px 10px;
+    gap: 10px;
 
-  border: none;
-  border-radius: 8px;
+    padding: 9px 10px;
 
-  background: transparent;
+    border: none;
+    border-radius: 8px;
 
-  color: #222;
-  font-size: 13px;
-  font-weight: 500;
+    background: transparent;
 
-  text-align: left;
+    color: #222;
 
-  cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
 
-  transition:
-    background 0.15s ease,
-    transform 0.1s ease;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        transform 0.1s ease;
 }
 
 .rtc-mention-item:hover {
-  background: #f1f4ff;
+    background: #f1f4ff;
 }
 
 .rtc-mention-item:active {
-  transform: scale(0.98);
+    transform: scale(0.98);
 }
 
-/* Small @ indicator */
+
+/* ================================
+   @ Indicator
+================================ */
 
 .rtc-mention-item::before {
-  content: "@";
+    content: "@";
 
-  width: 28px;
-  height: 28px;
+    width: 28px;
+    height: 28px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  flex-shrink: 0;
+    flex-shrink: 0;
 
-  border-radius: 50%;
+    border-radius: 50%;
 
-  background: #eef0ff;
-  color: #4f46e5;
+    background: #eef0ff;
 
-  font-size: 13px;
-  font-weight: 700;
+    color: #4f46e5;
+
+    font-size: 13px;
+    font-weight: 700;
 }
 
-/* Scrollbar */
+
+/* ================================
+   Mention Scrollbar
+================================ */
 
 .rtc-mention-list::-webkit-scrollbar {
-  width: 5px;
+    width: 5px;
 }
 
 .rtc-mention-list::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 10px;
+    background: #d1d5db;
+    border-radius: 10px;
 }
 
 .rtc-mention-list::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }

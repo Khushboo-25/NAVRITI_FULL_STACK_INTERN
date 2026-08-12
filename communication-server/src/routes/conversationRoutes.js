@@ -1,6 +1,8 @@
 import express from "express";
-import { createOrGetDirect,
-    getUserConversations,createGroup
+import { 
+    createOrGetDirect,
+    getUserConversations,
+    createGroup
  } from "../controllers/conversationController.js";
 
 const router = express.Router();

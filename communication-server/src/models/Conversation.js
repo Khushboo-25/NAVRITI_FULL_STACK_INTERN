@@ -12,9 +12,15 @@ const conversationSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        participantKey: {
+            type: String,
+            unique: true,
+            sparse: true
+        },
     },
     {
         timestamps: true,
     }
 );
+
 export default mongoose.model("Conversation", conversationSchema);
