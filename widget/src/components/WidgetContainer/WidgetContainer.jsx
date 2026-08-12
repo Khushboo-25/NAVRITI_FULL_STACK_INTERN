@@ -188,7 +188,6 @@ function WidgetContainer({
         };
 
 
-        initializeWidget();
 
 
         /*
@@ -594,6 +593,8 @@ function WidgetContainer({
             "messageDeleted",
             handleMessageDeleted
         );
+        
+        initializeWidget();
 
 
         /*

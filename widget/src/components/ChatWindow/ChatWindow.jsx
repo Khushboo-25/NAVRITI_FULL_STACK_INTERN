@@ -98,6 +98,7 @@ function ChatWindow({
                 sendMessage={sendMessage}
                 users={users}
                 currentUser={currentUser}
+                selectedConversation={selectedConversation}
             />
 
         </div>

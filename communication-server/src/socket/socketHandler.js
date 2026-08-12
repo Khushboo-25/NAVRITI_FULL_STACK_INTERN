@@ -4,8 +4,15 @@ const socketHandler = (io) => {
     io.on('connection', (socket) => 
         {
         console.log(`user connected:', ${socket.id}`);
-        
-        // Handle joining a conversation
+        // Join personal user room
+        socket.on("joinUser", (userId) => {
+            socket.join(`user:${userId}`);
+
+            console.log(
+                `User ${userId} joined personal room`
+            );
+        });
+        // Handle joining a existing conversation
         socket.on("joinConversation", (conversationId) => {
             socket.join(conversationId);
             console.log(`user ${socket.id} joined conversation: ${conversationId}`);
@@ -116,6 +123,7 @@ const socketHandler = (io) => {
                 `user ${socket.id} left conversation: ${conversationId}`
             );
         });
+        
 
         socket.on('disconnect', () => {
             console.log(`user disconnected: ${socket.id}`);

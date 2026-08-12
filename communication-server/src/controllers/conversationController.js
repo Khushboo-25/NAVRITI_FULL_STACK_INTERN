@@ -64,73 +64,126 @@ export const createOrGetDirect = async (req, res) => {
 
 
 export const getUserConversations = async (req, res) => {
-  try {
-    const { userId } = req.params;
+    try {
+        const { userId } = req.params;
 
-    // Find all participant records for this user
-    const participants = await Participant.find({ userId });
-
-    // Extract conversation IDs
-    const conversationIds = participants.map(
-      (participant) => participant.conversationId
-    );
-
-    // Fetch conversations
-    const conversations = await Conversation.find({
-      _id: { $in: conversationIds },
-    }).sort({ createdAt: -1 });
-
-    const response = [];
-
-for (const conversation of conversations) {
-
-    let displayName = conversation.displayName;
-    
-    // For direct chats, show the other participant
-    if (conversation.type === "direct") {
-
-
-        const conversationParticipants = await Participant.find({
-            conversationId: conversation._id,
+        // Find all participant records for this user
+        const participants = await Participant.find({
+            userId,
         });
 
-        const otherParticipant = conversationParticipants.find(
-            (participant) => participant.userId !== userId
+        // Extract conversation IDs
+        const conversationIds = participants.map(
+            (participant) =>
+                participant.conversationId
         );
 
-        displayName = otherParticipant
-            ? otherParticipant.userId
-            : "Unknown";
+        // Fetch conversations
+        const conversations = await Conversation.find({
+            _id: {
+                $in: conversationIds,
+            },
+        }).sort({
+            createdAt: -1,
+        });
+
+        const response = [];
+
+        for (const conversation of conversations) {
+
+            let displayName =
+                conversation.displayName;
+
+            // Get ALL participants of this conversation
+            const conversationParticipants =
+                await Participant.find({
+                    conversationId:
+                        conversation._id,
+                });
+
+            // Extract participant user IDs
+            const participantIds =
+                conversationParticipants.map(
+                    (participant) =>
+                        participant.userId
+                );
+
+            // Direct chat:
+            // show the other participant
+            if (
+                conversation.type ===
+                "direct"
+            ) {
+                const otherParticipant =
+                    conversationParticipants.find(
+                        (participant) =>
+                            participant.userId !==
+                            userId
+                    );
+
+                displayName =
+                    otherParticipant
+                        ? otherParticipant.userId
+                        : "Unknown";
+            }
+
+            // Fetch latest message
+            const lastMessage =
+                await Message.findOne({
+                    conversationId:
+                        conversation._id,
+                }).sort({
+                    createdAt: -1,
+                });
+
+            response.push({
+                conversationId:
+                    conversation._id,
+
+                type:
+                    conversation.type,
+
+                displayName,
+
+                // ⭐ Important for mentions
+                participants:
+                    participantIds,
+
+                lastMessage:
+                    lastMessage
+                        ? lastMessage.content
+                        : "",
+
+                lastMessageTime:
+                    lastMessage
+                        ? lastMessage.createdAt
+                        : null,
+            });
+        }
+
+
+        // ⭐ Sort by latest message
+        response.sort((a, b) => {
+            const timeA = a.lastMessageTime
+                ? new Date(a.lastMessageTime).getTime()
+                : 0;
+
+            const timeB = b.lastMessageTime
+                ? new Date(b.lastMessageTime).getTime()
+                : 0;
+
+            return timeB - timeA;
+        });
+
+
+        res.status(200).json(response);
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message,
+        });
     }
-
-    // Fetch latest message
-    const lastMessage = await Message.findOne({
-        conversationId: conversation._id,
-    }).sort({ createdAt: -1 });
-
-    response.push({
-        conversationId: conversation._id,
-        type: conversation.type,
-        displayName,
-
-        lastMessage: lastMessage
-            ? lastMessage.content
-            : "",
-
-        lastMessageTime: lastMessage
-            ? lastMessage.createdAt
-            : null,
-    });
-}
-
-    res.status(200).json(response);
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
 };
-
 
 export const createGroup = async (req, res) => {
     try {

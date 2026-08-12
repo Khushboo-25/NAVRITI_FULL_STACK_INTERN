@@ -7,6 +7,7 @@ function ChatInput({
     sendMessage,
     users = [],
     currentUser,
+    selectedConversation,
 }) {
     const [showMentions, setShowMentions] =
         useState(false);
@@ -50,18 +51,33 @@ function ChatInput({
      * --------------------------------------------
      */
 
+    const participantIds =
+    selectedConversation?.participants || [];
+
     const filteredUsers = users
+        .filter((user) =>
+            participantIds.some(
+                (id) =>
+                    id.toString() ===
+                    user.userId.toString()
+            )
+        )
         .filter(
             (user) =>
-                user.userId !==
-                currentUser?.userId
+                user.userId.toString() !==
+                currentUser?.userId.toString()
         )
         .filter((user) =>
             user.displayName
                 ?.toLowerCase()
                 .includes(mentionText)
         );
-
+        console.log("MENTION DEBUG", {
+            selectedConversation,
+            participantIds,
+            users,
+            filteredUsers,
+        });
 
     /*
      * --------------------------------------------

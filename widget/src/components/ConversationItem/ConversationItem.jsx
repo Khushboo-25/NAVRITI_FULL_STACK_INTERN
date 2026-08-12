@@ -1,5 +1,49 @@
 import "./ConversationItem.css";
 
+function formatConversationTime(dateString) {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const isToday =
+        date.toDateString() === now.toDateString();
+
+    if (isToday) {
+        return date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    const isYesterday =
+        date.toDateString() ===
+        yesterday.toDateString();
+
+    if (isYesterday) {
+        return "Yesterday";
+    }
+
+    const isSameYear =
+        date.getFullYear() === now.getFullYear();
+
+    if (isSameYear) {
+        return date.toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+        });
+    }
+
+    return date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
 function ConversationItem({
     conversation,
     selected,
@@ -9,18 +53,13 @@ function ConversationItem({
         conversation.type === "group"
             ? "👥"
             : conversation.displayName
-                ?.charAt(0)
-                .toUpperCase() || "?";
+                  ?.charAt(0)
+                  .toUpperCase() || "?";
 
     const formattedTime =
-        conversation.lastMessageTime
-            ? new Date(
-                  conversation.lastMessageTime
-              ).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-              })
-            : "";
+        formatConversationTime(
+            conversation.lastMessageTime
+        );
 
     return (
         <div
