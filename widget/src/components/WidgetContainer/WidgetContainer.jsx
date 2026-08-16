@@ -843,51 +843,46 @@ function WidgetContainer({
      * --------------------------------------------------
      */
 
-    const sendMessage = () => {
-
-        if (!message.trim()) {
-            return;
-        }
+    const sendMessage = (fileData = null) => {
 
         if (!conversationId) {
             return;
         }
 
-
-        const socket =
-            getSocket();
-
+        const socket = getSocket();
 
         if (!socket) {
+            console.error("Socket is not initialized");
+            return;
+        }
 
-            console.error(
-                "Socket is not initialized"
-            );
+        // File message
+        if (fileData) {
+            socket.emit("sendMessage", {
+                conversationId,
+                senderId,
+                content: "",
+                messageType: fileData.messageType,
+                attachment: fileData.attachment,
+            });
 
             return;
         }
 
+        // Text message
+        if (!message.trim()) {
+            return;
+        }
 
-        socket.emit(
-            "sendMessage",
-            {
-                conversationId,
-                senderId,
-                content:
-                    message.trim(),
-                messageType:
-                    "text",
-            }
-        );
-
-
-        /*
-         * Clear input
-         */
+        socket.emit("sendMessage", {
+            conversationId,
+            senderId,
+            content: message.trim(),
+            messageType: "text",
+        });
 
         setMessage("");
     };
-
 
     /*
      * --------------------------------------------------
@@ -1321,6 +1316,7 @@ function WidgetContainer({
                     message={message}
                     setMessage={setMessage}
                     sendMessage={sendMessage}
+                    serverUrl={serverUrl}
                     selectedConversation={
                         selectedConversation
                     }

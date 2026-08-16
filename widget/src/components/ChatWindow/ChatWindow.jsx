@@ -7,6 +7,7 @@ function ChatWindow({
     message,
     setMessage,
     sendMessage,
+    serverUrl,
     selectedConversation,
     currentUser,
     users,
@@ -96,6 +97,7 @@ function ChatWindow({
                 message={message}
                 setMessage={setMessage}
                 sendMessage={sendMessage}
+                serverUrl={serverUrl}
                 users={users}
                 currentUser={currentUser}
                 selectedConversation={selectedConversation}

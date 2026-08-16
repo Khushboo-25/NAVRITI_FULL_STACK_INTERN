@@ -11,15 +11,30 @@ const messageSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
-        content:{
+        content: {
             type: String,
-            required: true,
+            default: "",
         },
         messageType:{
             type: String,
             enum:["text","image","file","voice"],
             default:"text",
         },
+        attachment: {
+            fileName: {
+                type: String,
+            },
+            fileUrl: {
+                type: String,
+            },
+            fileType: {
+                type: String,
+            },
+            fileSize: {
+                type: Number,
+            },
+        },
+
         status:{
             type: String,
             enum:["sent","delivered","read"],

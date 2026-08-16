@@ -8,12 +8,15 @@ function ChatInput({
     users = [],
     currentUser,
     selectedConversation,
+    serverUrl,
 }) {
     const [showMentions, setShowMentions] =
         useState(false);
 
     const [mentionText, setMentionText] =
         useState("");
+    const [isUploading, setIsUploading] = 
+        useState(false);
 
 
     /*
@@ -43,7 +46,54 @@ function ChatInput({
             setShowMentions(false);
         }
     };
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
 
+        if (!file) {
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch(
+                `${serverUrl}/api/files/upload`,
+                {
+                    method: "POST",
+                    body: formData,
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || "File upload failed"
+                );
+            }
+
+            sendMessage({
+                messageType: "file",
+                content: "",
+                attachment: {
+                    fileName: data.file.originalName,
+                    fileUrl: data.file.fileUrl,
+                    fileType: data.file.fileType,
+                    fileSize: data.file.fileSize,
+                },
+            });
+
+        } catch (error) {
+            console.error("File upload error:", error);
+            alert(error.message || "File upload failed");
+        } finally {
+            setIsUploading(false);
+            e.target.value = "";
+        }
+    };
 
     /*
      * --------------------------------------------
@@ -167,9 +217,22 @@ function ChatInput({
 
                     </div>
                 )}
+            {/* File Input */}
+            <input
+                type="file"
+                id="rtc-file-input"
+                hidden
+                onChange={handleFileSelect}
+            />
 
-
-            {/* Input */}
+            <label
+                htmlFor="rtc-file-input"
+                className="rtc-file-button"
+                title="Attach file"
+            >
+                📎
+            </label>
+            {/* text Input */}
 
             <input
                 className="rtc-chat-input"
@@ -183,14 +246,14 @@ function ChatInput({
 
             {/* Send */}
 
-            <button
-                type="button"
-                className="rtc-send-button"
-                onClick={handleSend}
-                disabled={!message.trim()}
-                aria-label="Send message"
+            <button 
+                type="button" 
+                className="rtc-send-button" 
+                onClick={handleSend} 
+                disabled={!message.trim() || isUploading} 
+                aria-label="Send message" 
             >
-                ➤
+                {isUploading ? "..." : "➤"}
             </button>
 
         </div>

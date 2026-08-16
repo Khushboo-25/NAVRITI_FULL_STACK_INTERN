@@ -26,6 +26,7 @@ const socketHandler = (io) => {
                     senderId:data.senderId,
                     content:data.content,
                     messageType:data.messageType||"text",
+                    attachment: data.attachment || null,
                     status:"sent",
                 });
                 io.to(data.conversationId).emit("newMessage",message);

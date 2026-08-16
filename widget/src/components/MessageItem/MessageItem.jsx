@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import "./MessageItem.css";
+const formatFileSize = (bytes = 0) => {
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
 
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 function MessageItem({
     message,
     currentUser,
@@ -13,7 +23,7 @@ function MessageItem({
     const [editContent, setEditContent] =
         useState(message.content);
 
-
+    
     /*
      * Keep edit input synchronized if
      * another client edits this message.
@@ -182,26 +192,56 @@ function MessageItem({
                     /* Normal message */
 
                     <>
-                        <div>
-                            {message.content}
-                        </div>
+                        {message.messageType === "file" ? (
+                            <div className="rtc-file-message">
+
+                                <div className="rtc-file-info">
+
+                                    <span className="rtc-file-icon">
+                                        📎
+                                    </span>
+
+                                    <div className="rtc-file-details">
+                                        <div className="rtc-file-name">
+                                            {message.attachment?.fileName}
+                                        </div>
+
+                                        <div className="rtc-file-size">
+                                            {formatFileSize(
+                                                message.attachment?.fileSize
+                                            )}
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <a
+                                    href={message.attachment?.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="rtc-file-open"
+                                >
+                                    Open
+                                </a>
+
+                            </div>
+                        ) : (
+                            <div>
+                                {message.content}
+                            </div>
+                        )}
 
                         <span className="rtc-message-time">
                             {time}
                         </span>
 
-
-                        {/* Actions only for own messages */}
-
-                        {isMine && (
+                        {isMine && message.messageType !== "file" && (
                             <div className="rtc-message-actions">
 
                                 <button
                                     type="button"
                                     className="rtc-edit-button"
-                                    onClick={
-                                        handleEdit
-                                    }
+                                    onClick={handleEdit}
                                 >
                                     Edit
                                 </button>
@@ -210,9 +250,7 @@ function MessageItem({
                                     type="button"
                                     className="rtc-delete-button"
                                     onClick={() =>
-                                        onDeleteMessage(
-                                            message._id
-                                        )
+                                        onDeleteMessage(message._id)
                                     }
                                 >
                                     Delete
@@ -220,7 +258,6 @@ function MessageItem({
 
                             </div>
                         )}
-
                     </>
                 )}
 
