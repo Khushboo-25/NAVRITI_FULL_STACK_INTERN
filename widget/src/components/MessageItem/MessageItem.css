@@ -3,6 +3,9 @@
     flex-direction: column;
 
     margin: 12px;
+
+    max-width: 100%;
+    min-width: 0;
 }
 
 .rtc-message.rtc-mine {
@@ -30,6 +33,8 @@
 
 .rtc-bubble {
     max-width: 70%;
+    min-width: 0;
+    box-sizing: border-box;
 
     padding: 10px 14px;
 
@@ -45,6 +50,8 @@
 
     box-shadow:
         0 1px 2px rgba(0, 0, 0, 0.08);
+
+    overflow: hidden;
 }
 
 
@@ -205,4 +212,44 @@
 
 .rtc-delete-button:active {
     background: rgba(185, 74, 72, 0.16);
+}
+
+
+.rtc-image-message {
+    width: 100%;
+    max-width: 280px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.rtc-image-preview {
+    display: block;
+
+    width: 100%;
+    max-width: 280px;
+
+    max-height: 300px;
+
+    object-fit: contain;
+
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.rtc-image-name {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.rtc-file-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.rtc-file-open,
+.rtc-file-download {
+    text-decoration: none;
+    cursor: pointer;
 }

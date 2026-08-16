@@ -192,39 +192,82 @@ function MessageItem({
                     /* Normal message */
 
                     <>
-                        {message.messageType === "file" ? (
-                            <div className="rtc-file-message">
+                        {message.messageType === "file" ? 
+                        (
 
-                                <div className="rtc-file-info">
+                            message.attachment?.fileType?.startsWith("image/") ? (
 
-                                    <span className="rtc-file-icon">
-                                        📎
-                                    </span>
+                                <div className="rtc-image-message">
 
-                                    <div className="rtc-file-details">
-                                        <div className="rtc-file-name">
-                                            {message.attachment?.fileName}
-                                        </div>
+                                    <a
+                                        href={message.attachment.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img
+                                            src={message.attachment.fileUrl}
+                                            alt={message.attachment.fileName}
+                                            className="rtc-image-preview"
+                                        />
+                                    </a>
 
-                                        <div className="rtc-file-size">
-                                            {formatFileSize(
-                                                message.attachment?.fileSize
-                                            )}
-                                        </div>
+                                    <div className="rtc-image-name">
+                                        {message.attachment.fileName}
                                     </div>
 
                                 </div>
 
-                                <a
-                                    href={message.attachment?.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="rtc-file-open"
-                                >
-                                    Open
-                                </a>
+                            ) : (
 
-                            </div>
+                                <div className="rtc-file-message">
+
+                                    <div className="rtc-file-info">
+
+                                        <span className="rtc-file-icon">
+                                            📎
+                                        </span>
+
+                                        <div className="rtc-file-details">
+
+                                            <div className="rtc-file-name">
+                                                {message.attachment?.fileName}
+                                            </div>
+
+                                            <div className="rtc-file-size">
+                                                {formatFileSize(
+                                                    message.attachment?.fileSize
+                                                )}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div className="rtc-file-actions">
+
+                                        <a
+                                            href={message.attachment?.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="rtc-file-open"
+                                        >
+                                            Open
+                                        </a>
+
+                                        <a
+                                            href={message.attachment?.fileUrl}
+                                            download={message.attachment?.fileName}
+                                            className="rtc-file-download"
+                                        >
+                                            Download
+                                        </a>
+
+                                    </div>
+
+                                </div>
+
+                            )
+
                         ) : (
                             <div>
                                 {message.content}
@@ -235,16 +278,18 @@ function MessageItem({
                             {time}
                         </span>
 
-                        {isMine && message.messageType !== "file" && (
+                        {isMine && (
                             <div className="rtc-message-actions">
 
-                                <button
-                                    type="button"
-                                    className="rtc-edit-button"
-                                    onClick={handleEdit}
-                                >
-                                    Edit
-                                </button>
+                                {message.messageType !== "file" && (
+                                    <button
+                                        type="button"
+                                        className="rtc-edit-button"
+                                        onClick={handleEdit}
+                                    >
+                                        Edit
+                                    </button>
+                                )}
 
                                 <button
                                     type="button"
@@ -260,7 +305,6 @@ function MessageItem({
                         )}
                     </>
                 )}
-
             </div>
         </div>
     );
