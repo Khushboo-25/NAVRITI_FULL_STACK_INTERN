@@ -150,9 +150,17 @@ export const getUserConversations = async (req, res) => {
                     participantIds,
 
                 lastMessage:
-                    lastMessage
-                        ? lastMessage.content
-                        : "",
+                    !lastMessage
+                        ? ""
+                        : lastMessage.isDeleted
+                            ? "Message deleted"
+                            : lastMessage.messageType === "file"
+                                ? `📎 ${
+                                    lastMessage.attachment?.originalName ||
+                                    lastMessage.attachment?.fileName ||
+                                    "File"
+                                }`
+                                : lastMessage.content || "",
 
                 lastMessageTime:
                     lastMessage

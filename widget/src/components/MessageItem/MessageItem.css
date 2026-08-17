@@ -253,3 +253,39 @@
     text-decoration: none;
     cursor: pointer;
 }
+
+.rtc-file-message {
+    min-width: 220px;
+    max-width: 280px;
+}
+
+.rtc-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rtc-file-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.rtc-file-details {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.rtc-file-name {
+    font-size: 14px;
+    font-weight: 500;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rtc-file-size {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 2px;
+}

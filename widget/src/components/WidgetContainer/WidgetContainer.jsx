@@ -23,6 +23,23 @@ import "./WidgetContainer.css";
 import { initializeConfig } from "../../services/config";
 import { initializeApi } from "../../services/api";
 
+const getLastMessagePreview = (message) => {
+    if (!message) {
+        return "";
+    }
+
+    if (message.isDeleted) {
+        return "Message deleted";
+    }
+
+    if (message.messageType === "file") {
+        return `📎 ${
+            message.attachment?.fileName || "File"
+        }`;
+    }
+
+    return message.content || "";
+};
 
 function WidgetContainer({
     currentUser,
@@ -264,9 +281,9 @@ function WidgetContainer({
                     ...existingConversation,
 
                     lastMessage:
-                        newMessage.isDeleted
-                            ? "Message deleted"
-                            : newMessage.content,
+                        getLastMessagePreview(
+                            newMessage
+                        ),
 
                     lastMessageTime:
                         newMessage.createdAt,

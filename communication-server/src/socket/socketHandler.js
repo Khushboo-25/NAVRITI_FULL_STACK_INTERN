@@ -1,4 +1,7 @@
 import Message from "../models/message.js";
+import fs from "fs";
+import path from "path";
+
 
 const socketHandler = (io) => {
     io.on('connection', (socket) => 
@@ -100,22 +103,45 @@ const socketHandler = (io) => {
                     return;
                 }
 
-                io.to(message.conversationId.toString()).emit(
-                "messageDeleted",
-                message
+                // Delete physical file for file messages
+                if (
+                    message.messageType === "file" &&
+                    message.attachment?.fileName
+                ) {
+                    const filePath = path.join(
+                        "uploads",
+                        message.attachment.fileName
+                    );
+
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+
+                        console.log(
+                            "File deleted:",
+                            filePath
+                        );
+                    }
+                }
+
+                io.to(
+                    message.conversationId.toString()
+                ).emit(
+                    "messageDeleted",
+                    message
                 );
 
                 console.log(
-                "Message Deleted:",
-                message._id
+                    "Message Deleted:",
+                    message._id
                 );
+
             } catch (error) {
                 console.error(
-                "Error deleting message:",
-                error.message
+                    "Error deleting message:",
+                    error.message
                 );
             }
-            });
+        });
         
         socket.on("leaveConversation", (conversationId) => {
             socket.leave(conversationId);

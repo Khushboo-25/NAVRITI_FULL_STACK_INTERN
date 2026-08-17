@@ -11,6 +11,45 @@ const formatFileSize = (bytes = 0) => {
 
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
+const getFileIcon = (fileType) => {
+    if (!fileType) {
+        return "📎";
+    }
+
+    if (fileType === "application/pdf") {
+        return "📄";
+    }
+
+    if (
+        fileType === "application/vnd.ms-excel" ||
+        fileType ===
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ) {
+        return "📊";
+    }
+
+    if (
+        fileType === "application/msword" ||
+        fileType ===
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+        return "📝";
+    }
+
+    if (
+        fileType === "application/zip" ||
+        fileType === "application/x-zip-compressed"
+    ) {
+        return "🗜️";
+    }
+
+    if (fileType === "text/plain") {
+        return "📃";
+    }
+
+    return "📎";
+};
+
 function MessageItem({
     message,
     currentUser,
@@ -224,7 +263,9 @@ function MessageItem({
                                     <div className="rtc-file-info">
 
                                         <span className="rtc-file-icon">
-                                            📎
+                                            {getFileIcon(
+                                                message.attachment?.fileType
+                                            )}
                                         </span>
 
                                         <div className="rtc-file-details">

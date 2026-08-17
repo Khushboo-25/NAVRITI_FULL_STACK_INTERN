@@ -200,3 +200,7 @@
 .rtc-mention-list::-webkit-scrollbar-track {
     background: transparent;
 }
+.rtc-file-button-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}

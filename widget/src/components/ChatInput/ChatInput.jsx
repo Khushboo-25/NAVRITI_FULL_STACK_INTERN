@@ -1,6 +1,28 @@
 import { useState } from "react";
 import "./ChatInput.css";
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+const ALLOWED_FILE_TYPES = [
+    // Images
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+
+    // Documents
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+    // Excel
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+    // ZIP
+    "application/zip",
+    "application/x-zip-compressed",
+];
 function ChatInput({
     message,
     setMessage,
@@ -53,6 +75,24 @@ function ChatInput({
             return;
         }
 
+        // Validate file type
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+            alert(
+                "File type not supported. Please upload an image, PDF, Word, Excel, TXT, or ZIP file."
+            );
+
+            e.target.value = "";
+            return;
+        }
+
+        // Validate file size
+        if (file.size > MAX_FILE_SIZE) {
+            alert("File size cannot exceed 20 MB.");
+
+            e.target.value = "";
+            return;
+        }
+
         try {
             setIsUploading(true);
 
@@ -88,7 +128,12 @@ function ChatInput({
 
         } catch (error) {
             console.error("File upload error:", error);
-            alert(error.message || "File upload failed");
+
+            alert(
+                error.message ||
+                "File upload failed"
+            );
+
         } finally {
             setIsUploading(false);
             e.target.value = "";
@@ -227,10 +272,16 @@ function ChatInput({
 
             <label
                 htmlFor="rtc-file-input"
-                className="rtc-file-button"
-                title="Attach file"
+                className={`rtc-file-button ${
+                    isUploading ? "rtc-file-button-disabled" : ""
+                }`}
+                title={
+                    isUploading
+                        ? "Uploading..."
+                        : "Attach file"
+                }
             >
-                📎
+                {isUploading ? "⏳" : "📎"}
             </label>
             {/* text Input */}
 
