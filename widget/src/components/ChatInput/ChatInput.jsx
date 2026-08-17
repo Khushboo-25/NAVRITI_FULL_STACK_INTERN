@@ -123,6 +123,8 @@ function ChatInput({
                     fileUrl: data.file.fileUrl,
                     fileType: data.file.fileType,
                     fileSize: data.file.fileSize,
+                    publicId: data.file.publicId,
+                    sourceType: data.file.resourceType,
                 },
             });
 

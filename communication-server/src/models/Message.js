@@ -33,6 +33,12 @@ const messageSchema = new mongoose.Schema(
             fileSize: {
                 type: Number,
             },
+            publicId:{
+                type: String,
+            },
+            resourceType: {
+                type: String,
+            },
         },
 
         status:{

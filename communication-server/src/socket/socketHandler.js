@@ -1,6 +1,6 @@
 import Message from "../models/message.js";
-import fs from "fs";
-import path from "path";
+import cloudinary from "../config/cloudinary.js";
+
 
 
 const socketHandler = (io) => {
@@ -83,45 +83,52 @@ const socketHandler = (io) => {
         //Delete the message
         socket.on("deleteMessage", async (data) => {
             try {
-                const message = await Message.findOneAndUpdate(
-                    {
-                        _id: data.messageId,
-                        senderId: data.senderId
-                    },
-                    {
-                        $set: {
-                            isDeleted: true
-                        }
-                    },
-                    {
-                        new: true
-                    }
-                );
+                const message = await Message.findOne({
+                    _id: data.messageId,
+                    senderId: data.senderId,
+                });
 
                 if (!message) {
                     console.error("Message not found");
                     return;
                 }
 
-                // Delete physical file for file messages
+                /*
+                * Delete file from Cloudinary
+                */
                 if (
                     message.messageType === "file" &&
-                    message.attachment?.fileName
+                    message.attachment?.publicId
                 ) {
-                    const filePath = path.join(
-                        "uploads",
-                        message.attachment.fileName
-                    );
-
-                    if (fs.existsSync(filePath)) {
-                        fs.unlinkSync(filePath);
+                    try {
+                        await cloudinary.uploader.destroy(
+                            message.attachment.publicId,
+                            {
+                                resource_type: message.attachment.resourceType,
+                            }
+                        );
 
                         console.log(
-                            "File deleted:",
-                            filePath
+                            "Cloudinary file deleted:",
+                            message.attachment.publicId
                         );
+
+                    } catch (cloudinaryError) {
+                        console.error(
+                            "Cloudinary delete failed:",
+                            cloudinaryError.message
+                        );
+
+                        return;
                     }
                 }
+
+                /*
+                * Soft delete message
+                */
+                message.isDeleted = true;
+
+                await message.save();
 
                 io.to(
                     message.conversationId.toString()

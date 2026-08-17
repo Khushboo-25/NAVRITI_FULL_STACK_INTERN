@@ -68,7 +68,10 @@ router.post(
 
                     fileUrl:
                         uploadResult.secure_url,
-                        
+                    publicId: 
+                        uploadResult.public_id,
+                    resourceType: 
+                    uploadResult.resource_type,
                 },
             });
 
