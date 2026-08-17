@@ -1,31 +1,92 @@
 import express from "express";
 import upload from "../middleware/uploadMiddleware.js";
+import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
-router.post("/upload", upload.single("file"), (req, res) => {
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-    if (!req.file) {
-        return res.status(400).json({
-            message: "No file uploaded"
-        });
-    }
+router.post(
+    "/upload",
+    upload.single("file"),
+    async (req, res) => {
+        try {
+            console.log("BODY:", req.body);
+            console.log("FILE:", req.file);
 
-    const fileUrl =
-        `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+            if (!req.file) {
+                return res.status(400).json({
+                    message: "No file uploaded",
+                });
+            }
 
-    res.status(200).json({
-        message: "File uploaded successfully",
+            const uploadResult =
+                await new Promise(
+                    (resolve, reject) => {
 
-        file: {
-            originalName: req.file.originalname,
-            fileName: req.file.filename,
-            fileType: req.file.mimetype,
-            fileSize: req.file.size,
-            fileUrl
+                        const uploadStream =
+                            cloudinary.uploader.upload_stream(
+                                {
+                                    resource_type: "auto",
+                                    folder: "communication-widget",
+                                },
+                                (error, result) => {
+
+                                    if (error) {
+                                        reject(error);
+                                    } else {
+                                        resolve(result);
+                                    }
+                                }
+                            );
+
+                        uploadStream.end(
+                            req.file.buffer
+                        );
+                    }
+                );
+
+            console.log(
+                "CLOUDINARY RESULT:",
+                uploadResult
+            );
+
+            res.status(200).json({
+                message:
+                    "File uploaded successfully",
+
+                file: {
+                    originalName:
+                        req.file.originalname,
+
+                    fileName:
+                        req.file.originalname,
+
+                    fileType:
+                        req.file.mimetype,
+
+                    fileSize:
+                        req.file.size,
+
+                    fileUrl:
+                        uploadResult.secure_url,
+                        
+                },
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Cloudinary upload error:",
+                error
+            );
+
+            res.status(500).json({
+                message:
+                    "File upload failed",
+                error:
+                    error.message,
+            });
         }
-    });
-});
+    }
+);
 
 export default router;
