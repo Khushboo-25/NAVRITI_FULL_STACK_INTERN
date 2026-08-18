@@ -2,7 +2,6 @@ import "./App.css";
 import CommunicationWidget from "@rtc-widget/react";
 import "@rtc-widget/react/style.css";
 
-
 const currentUser = {
   userId: "user-13",
   displayName: "Khushboo13",
@@ -98,12 +97,6 @@ function App() {
         currentUser={currentUser}
         users={users}
         serverUrl="http://localhost:5000"
-        // theme={{
-        //   position: "bottom-right",
-        //   width: 420,
-        //   height: 650,
-        //   borderRadius: 18,
-        // }}
       />
     </>
   );
