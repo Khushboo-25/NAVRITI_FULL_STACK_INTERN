@@ -117,7 +117,8 @@ const createAnnouncement = async (req, res) => {
       senderId,
       title,
       content,
-      targetAudience,
+      targetAudience = "all",
+      targetUserIds = [],
       expiresAt,
     } = req.body;
 
@@ -139,24 +140,68 @@ const createAnnouncement = async (req, res) => {
       });
     }
 
-    const member = await AnnouncementPortalMember.findOne({
+    if (!["all", "selected"].includes(targetAudience)) {
+      return res.status(400).json({
+        message: "Invalid targetAudience",
+      });
+    }
+
+    // Check sender membership
+    const sender = await AnnouncementPortalMember.findOne({
       portalId,
       userId: senderId,
     });
 
-    if (!member) {
+    if (!sender) {
       return res.status(403).json({
         message: "User is not a member of this announcement portal",
       });
     }
 
+    // Only host/admin can create announcements
     if (
-      member.role !== "host" &&
-      member.role !== "admin"
+      sender.role !== "host" &&
+      sender.role !== "admin"
     ) {
       return res.status(403).json({
         message: "Only host or admin can create announcements",
       });
+    }
+
+    // Validate selected audience
+    if (targetAudience === "selected") {
+      if (
+        !Array.isArray(targetUserIds) ||
+        targetUserIds.length === 0
+      ) {
+        return res.status(400).json({
+          message:
+            "targetUserIds is required when targetAudience is selected",
+        });
+      }
+
+      // Check that all selected users belong to this portal
+      const selectedMembers =
+        await AnnouncementPortalMember.find({
+          portalId,
+          userId: { $in: targetUserIds },
+        });
+
+      const selectedParticipantIds = selectedMembers
+        .filter((member) => member.role === "participant")
+        .map((member) => member.userId);
+
+      const invalidUserIds = targetUserIds.filter(
+        (userId) => !selectedParticipantIds.includes(userId)
+      );
+
+      if (invalidUserIds.length > 0) {
+        return res.status(400).json({
+          message:
+            "Some selected users are not participants of this portal",
+          invalidUserIds,
+        });
+      }
     }
 
     const announcement = await Announcement.create({
@@ -164,7 +209,11 @@ const createAnnouncement = async (req, res) => {
       senderId,
       title: title.trim(),
       content: content.trim(),
-      targetAudience: targetAudience || "all",
+      targetAudience,
+      targetUserIds:
+        targetAudience === "selected"
+          ? targetUserIds
+          : [],
       expiresAt: expiresAt || null,
     });
 

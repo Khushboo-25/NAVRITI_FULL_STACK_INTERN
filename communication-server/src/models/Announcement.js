@@ -36,9 +36,16 @@ const announcementSchema = new mongoose.Schema(
     ],
 
     targetAudience: {
-      type: String,
-      default: "all",
+    type: String,
+    enum: ["all", "selected"],
+    default: "all",
     },
+
+    targetUserIds: [
+    {
+        type: String,
+    },
+    ],
 
     publishedAt: {
       type: Date,
