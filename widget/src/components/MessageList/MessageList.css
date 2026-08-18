@@ -8,5 +8,32 @@
 
     padding: 15px;
 
-    background: #f8fafc;
+    background: #f8f9fd;
+
+    scroll-behavior: smooth;
+}
+
+
+/* ================================
+   Message Scrollbar
+================================ */
+
+.rtc-message-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.rtc-message-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.rtc-message-list::-webkit-scrollbar-thumb {
+    background: #d8dbea;
+
+    border-radius: 10px;
+
+    transition: background 0.2s ease;
+}
+
+.rtc-message-list::-webkit-scrollbar-thumb:hover {
+    background: #bfc3d8;
 }

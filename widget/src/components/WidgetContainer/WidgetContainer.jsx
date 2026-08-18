@@ -171,6 +171,20 @@ function WidgetContainer({
                 setConversations(
                     userConversations
                 );
+                const mentionedIds =
+                    userConversations
+                        .filter(
+                            (conversation) =>
+                                conversation.hasMention
+                        )
+                        .map(
+                            (conversation) =>
+                                conversation.conversationId.toString()
+                        );
+
+                setMentionedConversations(
+                    new Set(mentionedIds)
+                );
 
 
                 /*

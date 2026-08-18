@@ -1,6 +1,11 @@
+import { useEffect, useState } from "react";
+
 import MessageList from "../MessageList/MessageList";
 import ChatInput from "../ChatInput/ChatInput";
+import MembersPanel from "../MembersPanel/MembersPanel";
+
 import "./ChatWindow.css";
+
 
 function ChatWindow({
     messages,
@@ -15,31 +20,83 @@ function ChatWindow({
     onEditMessage,
     onDeleteMessage,
 }) {
+
+    const [showMembers, setShowMembers] =
+        useState(false);
+
+
+    /*
+     * -----------------------------------------
+     * Close members panel when conversation
+     * changes
+     * -----------------------------------------
+     */
+
+    useEffect(() => {
+        setShowMembers(false);
+    }, [selectedConversation?.conversationId]);
+
+
+    /*
+     * -----------------------------------------
+     * Find members of current conversation
+     * -----------------------------------------
+     */
+
+    const conversationMembers =
+        users.filter((user) =>
+            selectedConversation?.participants?.some(
+                (participantId) =>
+                    participantId.toString() ===
+                    user.userId.toString()
+            )
+        );
+
+
+    /*
+     * -----------------------------------------
+     * No Conversation Selected
+     * -----------------------------------------
+     */
+
     if (!selectedConversation) {
         return (
             <div className="rtc-chat-widget rtc-empty-chat">
+
                 <div className="rtc-empty-chat-content">
+
                     <div className="rtc-empty-icon">
                         💬
                     </div>
 
-                    <h2>No Conversation Selected</h2>
+                    <h2>
+                        No Conversation Selected
+                    </h2>
 
                     <p>
                         Select a conversation from the
                         left or start a new chat.
                     </p>
+
                 </div>
+
             </div>
         );
     }
 
+
     return (
         <div className="rtc-chat-widget">
 
-            {/* Chat Header */}
+
+            {/* ================================
+                Chat Header
+            ================================= */}
 
             <div className="rtc-chat-header">
+
+
+                {/* Back Button */}
 
                 <button
                     type="button"
@@ -47,6 +104,7 @@ function ChatWindow({
                     onClick={onBack}
                     aria-label="Close conversation"
                 >
+
                     <span className="rtc-back-mobile">
                         ←
                     </span>
@@ -54,15 +112,22 @@ function ChatWindow({
                     <span className="rtc-back-desktop">
                         ✕
                     </span>
+
                 </button>
 
 
+                {/* Chat Avatar */}
+
                 <div className="rtc-chat-avatar">
+
                     {selectedConversation.type === "group"
                         ? "👥"
                         : "👤"}
+
                 </div>
 
+
+                {/* Chat Details */}
 
                 <div className="rtc-chat-details">
 
@@ -78,10 +143,41 @@ function ChatWindow({
 
                 </div>
 
+
+                {/* Three Dot / Members Toggle */}
+
+                <button
+                    type="button"
+                    className="rtc-chat-menu-button"
+                    onClick={() =>
+                        setShowMembers(
+                            (prev) => !prev
+                        )
+                    }
+                    aria-label="Toggle members"
+                    aria-expanded={showMembers}
+                >
+                    ⋮
+                </button>
+
             </div>
 
 
-            {/* Messages */}
+            {/* ================================
+                Members Panel
+            ================================= */}
+
+            {showMembers && (
+                <MembersPanel
+                    members={conversationMembers}
+                    currentUser={currentUser}
+                />
+            )}
+
+
+            {/* ================================
+                Messages
+            ================================= */}
 
             <MessageList
                 messages={messages}
@@ -91,7 +187,9 @@ function ChatWindow({
             />
 
 
-            {/* Input */}
+            {/* ================================
+                Input
+            ================================= */}
 
             <ChatInput
                 message={message}
@@ -100,11 +198,14 @@ function ChatWindow({
                 serverUrl={serverUrl}
                 users={users}
                 currentUser={currentUser}
-                selectedConversation={selectedConversation}
+                selectedConversation={
+                    selectedConversation
+                }
             />
 
         </div>
     );
 }
+
 
 export default ChatWindow;

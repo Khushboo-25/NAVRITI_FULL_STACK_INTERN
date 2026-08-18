@@ -12,7 +12,12 @@
 
     overflow: hidden;
 
-    background: #fff;
+    
+    background: linear-gradient(
+        135deg,
+        #9386a9,
+        #f8f9ff
+    );
 
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
@@ -101,7 +106,7 @@
 
     border-radius: 8px;
 
-    background: #3d6f7b;
+    background: #433d7b;
 
     color: white;
 
