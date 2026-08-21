@@ -32,6 +32,8 @@ const announcementSchema = new mongoose.Schema(
         fileName: String,
         fileType: String,
         fileSize: Number,
+        publicId: String,
+        resourceType: String,
       },
     ],
 

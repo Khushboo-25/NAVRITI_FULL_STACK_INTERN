@@ -1,0 +1,98 @@
+/* =========================================================
+   Announcement List
+   ========================================================= */
+
+.announcement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    padding: 16px 20px 24px;
+}
+
+
+/* =========================================================
+   Loading
+   ========================================================= */
+
+.announcement-list-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 180px;
+    padding: 30px 20px;
+
+    color: #6b7280;
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   Empty State
+   ========================================================= */
+
+.announcement-list-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 260px;
+    padding: 40px 20px;
+
+    text-align: center;
+}
+
+.announcement-list-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 52px;
+    height: 52px;
+
+    margin-bottom: 14px;
+
+    border-radius: 50%;
+
+    background: #f3f4f6;
+
+    font-size: 24px;
+}
+
+.announcement-list-empty h3 {
+    margin: 0;
+
+    color: #374151;
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.announcement-list-empty p {
+    max-width: 300px;
+
+    margin: 6px 0 0;
+
+    color: #9ca3af;
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 768px) {
+    .announcement-list {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .announcement-list-empty {
+        min-height: 220px;
+    }
+}

@@ -1,6 +1,7 @@
 import AnnouncementPortal from "../models/AnnouncementPortal.js";
 import AnnouncementPortalMember from "../models/AnnouncementPortalMember.js";
 import Announcement from "../models/Announcement.js";
+import cloudinary from "../config/cloudinary.js";
  const createAnnouncementPortal = async (req, res) => {
   try {
     const {
@@ -34,16 +35,22 @@ import Announcement from "../models/Announcement.js";
       createdBy: userId,
     });
 
+    
+    const membership =
     await AnnouncementPortalMember.create({
-      portalId: portal._id,
-      userId,
-      role: "host",
-      addedBy: userId,
+        portalId: portal._id,
+        userId,
+        role: "host",
+        addedBy: userId,
     });
+
+  console.log("CREATED PORTAL:", portal);
+  console.log("CREATED HOST MEMBERSHIP:", membership);
 
     return res.status(201).json({
       message: "Announcement portal created successfully",
       portal,
+      membership,
     });
   } catch (error) {
     console.error("Create announcement portal error:", error);
@@ -203,12 +210,63 @@ const createAnnouncement = async (req, res) => {
         });
       }
     }
+    const attachments = [];
+
+    for (const file of req.files || []) {
+
+        const uploadResult =
+            await new Promise(
+                (resolve, reject) => {
+
+                    const uploadStream =
+                        cloudinary.uploader.upload_stream(
+                            {
+                                resource_type: "auto",
+                                folder:
+                                    "communication-widget/announcements",
+                            },
+                            (error, result) => {
+
+                                if (error) {
+                                    reject(error);
+                                } else {
+                                    resolve(result);
+                                }
+                            }
+                        );
+
+                    uploadStream.end(
+                        file.buffer
+                    );
+                }
+            );
+
+        attachments.push({
+            url: uploadResult.secure_url,
+
+            fileName:
+                file.originalname,
+
+            fileType:
+                file.mimetype,
+
+            fileSize:
+                file.size,
+
+            publicId:
+                uploadResult.public_id,
+
+            resourceType:
+                uploadResult.resource_type,
+        });
+    }
 
     const announcement = await Announcement.create({
       portalId,
       senderId,
       title: title.trim(),
       content: content.trim(),
+      attachments,
       targetAudience,
       targetUserIds:
         targetAudience === "selected"
@@ -259,8 +317,16 @@ const getAnnouncements = async (req, res) => {
       portalId,
       $or: [
         { expiresAt: null },
-        { expiresAt: { $gt: new Date() } },
+        { expiresAt: { $gt: new Date() } }
       ],
+      $and: [
+        {
+          $or: [
+            { targetAudience: "all" },
+            { targetAudience: "selected", targetUserIds: userId }
+          ]
+        }
+      ]
     }).sort({
       publishedAt: -1,
     });
@@ -361,60 +427,163 @@ const updateAnnouncement = async (req, res) => {
 };
 
 
-const deleteAnnouncement = async (req, res) => {
-  try {
-    const { portalId, announcementId } = req.params;
-    const { userId } = req.body;
+ const deleteAnnouncement = async (
+    req,
+    res
+) => {
+    try {
+        const {
+            portalId,
+            announcementId,
+        } = req.params;
 
-    if (!userId) {
-      return res.status(400).json({
-        message: "userId is required",
-      });
+        const {
+            userId,
+        } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Find announcement
+         * -----------------------------------------
+         */
+
+        const announcement =
+            await Announcement.findOne({
+                _id: announcementId,
+                portalId,
+            });
+
+        if (!announcement) {
+            return res.status(404).json({
+                message:
+                    "Announcement not found",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Check membership
+         * -----------------------------------------
+         */
+
+        const membership =
+            await AnnouncementPortalMember.findOne({
+                portalId,
+                userId,
+            });
+
+        if (!membership) {
+            return res.status(403).json({
+                message:
+                    "You are not a member of this portal",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Only host/admin can delete
+         * -----------------------------------------
+         */
+
+        if (
+            membership.role !== "host" &&
+            membership.role !== "admin"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Only host or admin can delete announcements",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete Cloudinary attachments
+         * -----------------------------------------
+         */
+
+        for (
+            const attachment
+            of announcement.attachments || []
+        ) {
+
+            if (
+                !attachment.publicId
+            ) {
+                continue;
+            }
+
+            try {
+
+                await cloudinary.uploader.destroy(
+                    attachment.publicId,
+                    {
+                        resource_type:
+                            attachment.resourceType ||
+                            "image",
+                    }
+                );
+
+                console.log(
+                    "Cloudinary attachment deleted:",
+                    attachment.publicId
+                );
+
+            } catch (cloudinaryError) {
+
+                console.error(
+                    "Cloudinary attachment deletion failed:",
+                    cloudinaryError.message
+                );
+
+                /*
+                 * Stop deletion so we don't end up
+                 * deleting the announcement while
+                 * its files remain in Cloudinary.
+                 */
+
+                return res.status(500).json({
+                    message:
+                        "Failed to delete announcement attachment",
+                    error:
+                        cloudinaryError.message,
+                });
+            }
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete announcement
+         * -----------------------------------------
+         */
+
+        await Announcement.deleteOne({
+            _id: announcementId,
+        });
+
+        return res.status(200).json({
+            message:
+                "Announcement deleted successfully",
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Failed to delete announcement:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to delete announcement",
+            error: error.message,
+        });
     }
-
-    const member = await AnnouncementPortalMember.findOne({
-      portalId,
-      userId,
-    });
-
-    if (!member) {
-      return res.status(403).json({
-        message: "User is not a member of this announcement portal",
-      });
-    }
-
-    if (
-      member.role !== "host" &&
-      member.role !== "admin"
-    ) {
-      return res.status(403).json({
-        message: "Only host or admin can delete announcements",
-      });
-    }
-
-    const announcement =
-      await Announcement.findOneAndDelete({
-        _id: announcementId,
-        portalId,
-      });
-
-    if (!announcement) {
-      return res.status(404).json({
-        message: "Announcement not found",
-      });
-    }
-
-    return res.status(200).json({
-      message: "Announcement deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete announcement error:", error);
-
-    return res.status(500).json({
-      message: "Failed to delete announcement",
-      error: error.message,
-    });
-  }
 };
 
 const getAnnouncement = async (req, res) => {
@@ -465,6 +634,88 @@ const getAnnouncement = async (req, res) => {
   }
 };
 
+const getUserAnnouncementPortals = async (
+    req,
+    res
+) => {
+    try {
+        const { userId } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+        const memberships =
+    await AnnouncementPortalMember.find({
+        userId,
+    }).lean();
+        
+
+        console.log(
+            "CREATED HOST MEMBERSHIP:",
+            memberships
+        );
+
+        if (memberships.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        const portalIds =
+            memberships.map(
+                (membership) =>
+                    membership.portalId
+            );
+
+        const portals =
+            await AnnouncementPortal.find({
+                _id: {
+                    $in: portalIds,
+                },
+            }).lean();
+            console.log(
+                "ANNOUNCEMENT PORTALS:",
+                portals
+            );
+        const membershipMap =
+            new Map(
+                memberships.map(
+                    (membership) => [
+                        membership.portalId.toString(),
+                        membership.role,
+                    ]
+                )
+            );
+
+        const result =
+            portals.map((portal) => ({
+                ...portal,
+
+                role:
+                    membershipMap.get(
+                        portal._id.toString()
+                    ),
+            }));
+
+        return res.status(200).json(
+            result
+        );
+
+    } catch (error) {
+        console.error(
+            "Failed to get user announcement portals:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to get announcement portals",
+            error: error.message,
+        });
+    }
+};
+
 export {
   // your existing exports...
   createAnnouncementPortal,
@@ -474,4 +725,5 @@ export {
   getAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  getUserAnnouncementPortals,
 };

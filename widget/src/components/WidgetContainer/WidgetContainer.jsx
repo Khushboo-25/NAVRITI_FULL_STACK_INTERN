@@ -9,8 +9,8 @@ import ChatWindow from "../ChatWindow/ChatWindow";
 import ConversationList from "../ConversationList/ConversationList";
 import NewChatModal from "../NewChatModal/NewChatModal";
 import NewGroupModal from "../NewGroupModal/NewGroupModal";
-
 import { getMessages } from "../../services/messageService";
+import AnnouncementPortal from "../AnnouncementPortal/AnnouncementPortal";
 
 import {
     createOrGetDirect,
@@ -109,6 +109,9 @@ function WidgetContainer({
      */
 
     const loadRequestRef = useRef(0);
+
+    const [activeSection, setActiveSection] =
+    useState("chat");
 
 
     /*
@@ -1224,7 +1227,6 @@ function WidgetContainer({
                     )
         );
 
-
     /*
      * --------------------------------------------------
      * UI
@@ -1238,6 +1240,7 @@ function WidgetContainer({
                 Conversation Sidebar
             ================================= */}
 
+            {activeSection === "chat" && (
             <div
                 className={`rtc-sidebar ${
                     isMobile &&
@@ -1246,7 +1249,7 @@ function WidgetContainer({
                         : ""
                 }`}
             >
-
+            
                 <div className="rtc-sidebar-header">
 
                     <div className="rtc-sidebar-title">
@@ -1291,6 +1294,14 @@ function WidgetContainer({
                         >
                             👥 Group
                         </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setActiveSection("announcements")
+                            }
+                        >
+                            📢 Announcements
+                        </button>
 
                     </div>
 
@@ -1326,61 +1337,75 @@ function WidgetContainer({
                 />
 
             </div>
-
+            )}
 
             {/* ================================
                 Chat Section
             ================================= */}
 
-            <div
-                className={`rtc-chat-section ${
-                    isMobile
-                        ? showChat
-                            ? "rtc-show-mobile"
+
+            {activeSection === "chat" && (
+                <div
+                    className={`rtc-chat-section ${
+                        isMobile
+                            ? showChat
+                                ? "rtc-show-mobile"
+                                : ""
                             : ""
-                        : ""
-                }`}
-            >
+                    }`}
+                >
+                    <ChatWindow
+                        messages={messages}
+                        message={message}
+                        setMessage={setMessage}
+                        sendMessage={sendMessage}
+                        serverUrl={serverUrl}
+                        selectedConversation={
+                            selectedConversation
+                        }
+                        currentUser={
+                            currentUser
+                        }
+                        users={users}
+                        onBack={() => {
 
-                <ChatWindow
-                    messages={messages}
-                    message={message}
-                    setMessage={setMessage}
-                    sendMessage={sendMessage}
-                    serverUrl={serverUrl}
-                    selectedConversation={
-                        selectedConversation
-                    }
-                    currentUser={
-                        currentUser
-                    }
-                    users={users}
-                    onBack={() => {
+                            setShowChat(false);
 
-                        setShowChat(false);
+                            setSelectedConversation(
+                                null
+                            );
 
-                        setSelectedConversation(
-                            null
-                        );
+                            setConversationId(
+                                null
+                            );
 
-                        setConversationId(
-                            null
-                        );
+                            setMessages([]);
 
-                        setMessages([]);
+                            selectedConversationRef.current =
+                                null;
+                        }}
+                        onEditMessage={
+                            handleEditMessage
+                        }
+                        onDeleteMessage={
+                            handleDeleteMessage
+                        }
+                    />
+                </div>
+            )}
 
-                        selectedConversationRef.current =
-                            null;
-                    }}
-                    onEditMessage={
-                        handleEditMessage
-                    }
-                    onDeleteMessage={
-                        handleDeleteMessage
-                    }
-                />
+            {activeSection === "announcements" && (
+                <div className="rtc-announcement-section">
 
-            </div>
+                    <AnnouncementPortal
+                        currentUser={currentUser}
+                        onBack={()=>
+                            setActiveSection("chat")
+                        }
+                    />
+
+                </div>
+            )}
 
 
             {/* ================================
@@ -1404,7 +1429,6 @@ function WidgetContainer({
                     handleStartChat
                 }
             />
-
 
             {/* ================================
                 New Group Modal

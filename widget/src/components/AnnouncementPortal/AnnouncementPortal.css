@@ -1,0 +1,634 @@
+/* =========================================================
+   Announcement Portal
+   ========================================================= */
+
+.announcement-portal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+
+    background: #f7f8fa;
+    color: #1f2937;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   Header
+   ========================================================= */
+
+.announcement-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 16px 18px;
+
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+
+    flex-shrink: 0;
+}
+
+
+/* Back button */
+
+.announcement-back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+
+    background: #ffffff;
+    color: #374151;
+
+    font-size: 18px;
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.announcement-back-button:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.announcement-back-button:active {
+    transform: scale(0.96);
+}
+
+
+/* Header text */
+
+.announcement-header > div {
+    min-width: 0;
+}
+
+.announcement-header h2 {
+    margin: 0;
+
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.3;
+
+    color: #111827;
+}
+
+.announcement-header p {
+    margin: 3px 0 0;
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   Portal Selector
+   ========================================================= */
+
+.announcement-portals {
+    padding: 12px 16px;
+
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+
+    flex-shrink: 0;
+}
+
+.announcement-portal-label {
+    margin-bottom: 8px;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+
+    color: #9ca3af;
+}
+
+.announcement-portal-list {
+    display: flex;
+    align-items: stretch;
+
+    gap: 8px;
+
+    overflow-x: auto;
+
+    scrollbar-width: none;
+}
+
+.announcement-portal-list::-webkit-scrollbar {
+    display: none;
+}
+
+
+/* Portal item */
+
+.announcement-portal-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+
+    min-width: 115px;
+    max-width: 180px;
+
+    padding: 9px 12px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+
+    background: #ffffff;
+
+    cursor: pointer;
+
+    text-align: left;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.announcement-portal-item:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.announcement-portal-item.active {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.announcement-portal-item span {
+    width: 100%;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 12px;
+    font-weight: 650;
+
+    color: #1f2937;
+}
+
+.announcement-portal-item small {
+    margin-top: 3px;
+
+    font-size: 10px;
+    font-weight: 500;
+
+    color: #9ca3af;
+
+    text-transform: capitalize;
+}
+
+
+/* =========================================================
+   Error
+   ========================================================= */
+
+.announcement-error {
+    margin: 10px 16px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+
+    background: #fef2f2;
+    color: #b91c1c;
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    flex-shrink: 0;
+}
+
+
+/* =========================================================
+   Main Content
+   ========================================================= */
+
+.announcement-content {
+    display: flex;
+    flex-direction: column;
+
+    flex: 1;
+    min-height: 0;
+
+    overflow: hidden;
+
+    background: #f7f8fa;
+}
+
+
+/* =========================================================
+   Selected Portal Header
+   ========================================================= */
+
+.announcement-content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    padding: 15px 18px;
+
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+
+    flex-shrink: 0;
+}
+
+.announcement-content-header > div {
+    min-width: 0;
+}
+
+.announcement-content-header h3 {
+    margin: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 16px;
+    font-weight: 650;
+
+    color: #111827;
+}
+
+.announcement-content-header p {
+    margin: 4px 0 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 11px;
+    line-height: 1.5;
+
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   + Announcement Button
+   ========================================================= */
+
+.announcement-create-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    min-height: 34px;
+
+    padding: 7px 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+
+    background: #111827;
+    color: #ffffff;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.announcement-create-button:hover {
+    background: #374151;
+    border-color: #374151;
+
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.announcement-create-button:active {
+    transform: scale(0.97);
+}
+
+.announcement-create-button:focus-visible {
+    outline: 2px solid #9ca3af;
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   Announcement List Area
+   ========================================================= */
+
+.announcement-content > .announcement-list {
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+}
+
+.announcement-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    padding: 14px 16px 20px;
+
+    background: #f7f8fa;
+}
+
+
+/* Scrollbar */
+
+.announcement-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.announcement-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-list::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+
+/* =========================================================
+   Announcement Card
+   ========================================================= */
+
+.announcement-card {
+    position: relative;
+
+    padding: 14px 15px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.025);
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.announcement-card:hover {
+    border-color: #d1d5db;
+
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+
+/* =========================================================
+   Card Header
+   ========================================================= */
+
+.announcement-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 7px;
+}
+
+.announcement-card-header h3 {
+    min-width: 0;
+
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.4;
+
+    color: #111827;
+}
+
+.announcement-card-header span {
+    flex-shrink: 0;
+
+    font-size: 10px;
+    line-height: 1.5;
+
+    color: #9ca3af;
+}
+
+
+/* =========================================================
+   Announcement Content
+   ========================================================= */
+
+.announcement-card-content {
+    margin: 0;
+
+    color: #4b5563;
+
+    font-size: 12.5px;
+    line-height: 1.6;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   Empty State
+   ========================================================= */
+
+.announcement-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    flex: 1;
+    min-height: 220px;
+
+    padding: 40px 20px;
+
+    text-align: center;
+
+    color: #6b7280;
+}
+
+.announcement-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 52px;
+    height: 52px;
+
+    margin-bottom: 13px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    font-size: 23px;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.announcement-empty h3 {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #374151;
+}
+
+.announcement-empty p {
+    max-width: 300px;
+
+    margin: 6px 0 0;
+
+    font-size: 11px;
+    line-height: 1.5;
+
+    color: #9ca3af;
+}
+
+
+/* =========================================================
+   Loading
+   ========================================================= */
+
+.announcement-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex: 1;
+    min-height: 180px;
+
+    padding: 30px;
+
+    font-size: 12px;
+
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    .announcement-header {
+        padding: 14px 14px;
+    }
+
+    .announcement-header h2 {
+        font-size: 17px;
+    }
+
+    .announcement-header p {
+        font-size: 11px;
+    }
+
+    .announcement-portals {
+        padding: 10px 12px;
+    }
+
+    .announcement-portal-item {
+        min-width: 105px;
+        padding: 8px 10px;
+    }
+
+    .announcement-content-header {
+        align-items: flex-start;
+
+        padding: 13px 14px;
+    }
+
+    .announcement-content-header h3 {
+        font-size: 15px;
+    }
+
+    .announcement-content-header p {
+        max-width: 180px;
+    }
+
+    .announcement-create-button {
+        min-height: 32px;
+        padding: 6px 10px;
+
+        font-size: 11px;
+    }
+
+    .announcement-list {
+        padding: 12px;
+    }
+
+    .announcement-card {
+        padding: 13px;
+    }
+
+    .announcement-card-header h3 {
+        font-size: 13px;
+    }
+
+    .announcement-card-content {
+        font-size: 12px;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    .announcement-content-header {
+        gap: 10px;
+    }
+
+    .announcement-create-button {
+        padding: 6px 9px;
+    }
+
+    .announcement-content-header p {
+        max-width: 150px;
+    }
+}

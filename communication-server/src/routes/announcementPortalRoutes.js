@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -10,10 +11,15 @@ import {
   getAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  getUserAnnouncementPortals,
 } from "../controllers/announcementPortalController.js";
 router.post(
   "/",
   createAnnouncementPortal
+);
+router.get(
+    "/",
+    getUserAnnouncementPortals
 );
 
 router.post(
@@ -23,9 +29,9 @@ router.post(
 
 router.post(
   "/:portalId/announcements",
+  upload.array("attachments", 10),
   createAnnouncement
 );
-
 router.get(
   "/:portalId/announcements",
   getAnnouncements
