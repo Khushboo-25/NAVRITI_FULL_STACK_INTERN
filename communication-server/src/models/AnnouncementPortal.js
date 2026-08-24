@@ -18,6 +18,11 @@ const announcementPortalSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    targetAudience: {
+            type: String,
+            enum: ["all", "selected"],
+            default: "all",
+        },
   },
   {
     timestamps: true,

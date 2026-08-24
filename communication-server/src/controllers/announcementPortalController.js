@@ -2,84 +2,225 @@ import AnnouncementPortal from "../models/AnnouncementPortal.js";
 import AnnouncementPortalMember from "../models/AnnouncementPortalMember.js";
 import Announcement from "../models/Announcement.js";
 import cloudinary from "../config/cloudinary.js";
- const createAnnouncementPortal = async (req, res) => {
-  try {
-    const {
-      userId,
-      role,
-      name,
-      description,
-      members,
-    } = req.body ||{};
-    console.log("CREATE PORTAL BODY:", req.body);
-console.log("CREATE PORTAL CONTENT TYPE:", req.headers["content-type"]);
-     if (!userId) {
-          return res.status(400).json({
-              message: "userId is required",
-          });
-      }
-      if (!name || !name.trim()) {
-          return res.status(400).json({
-              message: "Portal name is required",
-          });
-      }
-    if (role !== "admin") {
-      return res.status(403).json({
-        message: "Only admins can create announcement portals",
-      });
-    }
 
 
-    const portal = await AnnouncementPortal.create({
-      name: name.trim(),
-      description: description?.trim() || "",
-      createdBy: userId,
-    });
+const createAnnouncementPortal = async (req, res) => {
+    try {
 
-    
-    const membership =
-      await AnnouncementPortalMember.create({
-        portalId: portal._id,
-        userId,
-        role: "host",
-        addedBy: userId,
-      });
+        const {
+            userId,
+            role,
+            name,
+            description,
+            targetAudience = "all",
+            members = [],
+        } = req.body || {};
 
-    const participantMembers = Array.isArray(members)
-      ? members
-          .filter((member) => member.userId)
-          .filter((member) => member.userId !== userId)
-          .map((member) => ({
-            portalId: portal._id,
-            userId: member.userId,
-            role: "participant",
-            addedBy: userId,
-          }))
-      : [];
 
-    let createdMembers = [];
-
-    if (participantMembers.length > 0) {
-      createdMembers =
-        await AnnouncementPortalMember.insertMany(
-          participantMembers
+        console.log(
+            "CREATE PORTAL BODY:",
+            req.body
         );
+
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                message: "Portal name is required",
+            });
+        }
+
+
+        if (role !== "admin") {
+            return res.status(403).json({
+                message:
+                    "Only admins can create announcement portals",
+            });
+        }
+
+
+        if (
+            !["all", "selected"].includes(
+                targetAudience
+            )
+        ) {
+            return res.status(400).json({
+                message:
+                    "Invalid targetAudience",
+            });
+        }
+
+
+        /*
+         * -----------------------------------------
+         * SELECTED PORTAL VALIDATION
+         * -----------------------------------------
+         */
+
+        if (
+            targetAudience === "selected" &&
+            (!Array.isArray(members) ||
+                members.length === 0)
+        ) {
+            return res.status(400).json({
+                message:
+                    "At least one member is required for a selected portal",
+            });
+        }
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PORTAL
+         * -----------------------------------------
+         */
+
+        const portal =
+            await AnnouncementPortal.create({
+                name: name.trim(),
+
+                description:
+                    description?.trim() || "",
+
+                createdBy: userId,
+
+                targetAudience,
+            });
+
+
+        /*
+         * -----------------------------------------
+         * HOST IS ALWAYS A MEMBER
+         * -----------------------------------------
+         */
+
+        const membership =
+            await AnnouncementPortalMember.create({
+                portalId: portal._id,
+
+                userId,
+
+                role: "host",
+
+                addedBy: userId,
+            });
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PARTICIPANT MEMBERS
+         * -----------------------------------------
+         *
+         * For SELECTED:
+         *   use members sent by frontend.
+         *
+         * For ALL:
+         *   frontend must send all users as members.
+         *
+         * This keeps AnnouncementPortalMember
+         * as the single source of truth for
+         * portal visibility.
+         * -----------------------------------------
+         */
+
+        let participantMembers = [];
+
+
+        if (Array.isArray(members)) {
+
+            participantMembers =
+                members
+                    .filter(
+                        (member) =>
+                            member?.userId
+                    )
+                    .filter(
+                        (member) =>
+                            member.userId !==
+                            userId
+                    )
+                    .map(
+                        (member) => ({
+                            portalId:
+                                portal._id,
+
+                            userId:
+                                member.userId,
+
+                            role:
+                                "participant",
+
+                            addedBy:
+                                userId,
+                        })
+                    );
+        }
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PARTICIPANT MEMBERSHIPS
+         * -----------------------------------------
+         */
+
+        let createdMembers = [];
+
+
+        if (
+            participantMembers.length > 0
+        ) {
+
+            createdMembers =
+                await AnnouncementPortalMember.insertMany(
+                    participantMembers
+                );
+        }
+
+
+        /*
+         * -----------------------------------------
+         * RESPONSE
+         * -----------------------------------------
+         */
+
+        return res.status(201).json({
+
+            message:
+                "Announcement portal created successfully",
+
+            portal,
+
+            membership,
+
+            members:
+                createdMembers,
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Create announcement portal error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            message:
+                "Failed to create announcement portal",
+
+            error:
+                error.message,
+
+        });
     }
-
-    return res.status(201).json({
-      message: "Announcement portal created successfully",
-      portal,
-      membership,
-      members: createdMembers,
-    });
-  } catch (error) {
-    console.error("Create announcement portal error:", error);
-
-    return res.status(500).json({
-      message: "Failed to create announcement portal",
-      error: error.message,
-    });
-  }
 };
 
 const addPortalMembers = async (req, res) => {
@@ -145,10 +286,21 @@ const createAnnouncement = async (req, res) => {
       title,
       content,
       targetAudience = "all",
-      targetUserIds = [],
       expiresAt,
     } = req.body;
+    let { targetUserIds = [] } = req.body;
 
+    if (typeof targetUserIds === "string") {
+        try {
+            targetUserIds = JSON.parse(targetUserIds);
+        } catch {
+            targetUserIds = [targetUserIds];
+        }
+    }
+
+    if (!Array.isArray(targetUserIds)) {
+        targetUserIds = [targetUserIds];
+    }
     if (!senderId) {
       return res.status(400).json({
         message: "senderId is required",
@@ -691,7 +843,9 @@ const getUserAnnouncementPortals = async (
     req,
     res
 ) => {
+
     try {
+
         const { userId } = req.query;
 
         if (!userId) {
@@ -700,20 +854,17 @@ const getUserAnnouncementPortals = async (
             });
         }
 
+
         const memberships =
-    await AnnouncementPortalMember.find({
-        userId,
-    }).lean();
-        
+            await AnnouncementPortalMember.find({
+                userId,
+            }).lean();
 
-        console.log(
-            "CREATED HOST MEMBERSHIP:",
-            memberships
-        );
 
-        if (memberships.length === 0) {
+        if (!memberships.length) {
             return res.status(200).json([]);
         }
+
 
         const portalIds =
             memberships.map(
@@ -721,16 +872,15 @@ const getUserAnnouncementPortals = async (
                     membership.portalId
             );
 
+
         const portals =
             await AnnouncementPortal.find({
                 _id: {
                     $in: portalIds,
                 },
             }).lean();
-            console.log(
-                "ANNOUNCEMENT PORTALS:",
-                portals
-            );
+
+
         const membershipMap =
             new Map(
                 memberships.map(
@@ -740,6 +890,7 @@ const getUserAnnouncementPortals = async (
                     ]
                 )
             );
+
 
         const result =
             portals.map((portal) => ({
@@ -751,11 +902,11 @@ const getUserAnnouncementPortals = async (
                     ),
             }));
 
-        return res.status(200).json(
-            result
-        );
+
+        return res.status(200).json(result);
 
     } catch (error) {
+
         console.error(
             "Failed to get user announcement portals:",
             error
@@ -764,11 +915,11 @@ const getUserAnnouncementPortals = async (
         return res.status(500).json({
             message:
                 "Failed to get announcement portals",
+
             error: error.message,
         });
     }
 };
-
 export {
   // your existing exports...
   createAnnouncementPortal,
