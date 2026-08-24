@@ -892,19 +892,30 @@ const getUserAnnouncementPortals = async (
             );
 
 
-        const result =
-            portals.map((portal) => ({
-                ...portal,
+        const result = await Promise.all(
+            portals.map(async (portal) => {
 
-                role:
-                    membershipMap.get(
-                        portal._id.toString()
-                    ),
-            }));
+                const members =
+                    await AnnouncementPortalMember.find({
+                        portalId: portal._id,
+                    })
+                        .select("userId role")
+                        .lean();
 
+                return {
+                    ...portal,
+
+                    role:
+                        membershipMap.get(
+                            portal._id.toString()
+                        ),
+
+                    members,
+                };
+            })
+        );
 
         return res.status(200).json(result);
-
     } catch (error) {
 
         console.error(

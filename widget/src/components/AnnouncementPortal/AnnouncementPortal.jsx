@@ -90,53 +90,21 @@ function AnnouncementPortal({
 
     const announcementUsers = useMemo(() => {
 
-        if (!selectedPortal) {
+        if (!selectedPortal?.members) {
             return [];
         }
 
-
-        /*
-         * If backend provides members,
-         * restrict the announcement picker
-         * to actual portal members.
-         */
-
-        if (
-            Array.isArray(
-                selectedPortal.members
-            )
-        ) {
-
-            const memberIds =
-                selectedPortal.members
-                    .map(
-                        (member) =>
-                            member.userId
-                    )
-                    .filter(Boolean);
-
-
-            return users.filter(
-                (user) =>
-                    memberIds.includes(
-                        user.userId
-                    )
+        const memberIds =
+            selectedPortal.members.map(
+                (member) => member.userId
             );
-        }
 
-
-        /*
-         * Current backend portal response
-         * does not include members.
-         *
-         * Until membership is included,
-         * use the supplied user list.
-         *
-         * Backend still validates selected
-         * users before creating the announcement.
-         */
-
-        return users;
+        return users.filter(
+            (user) =>
+                memberIds.includes(
+                    user.userId
+                )
+        );
 
     }, [
         selectedPortal,
