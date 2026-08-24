@@ -1274,3 +1274,18 @@ Message
 ```
 
 That reflects what you actually built rather than the earlier local-storage version.
+
+
+
+
+Announcemnt services 
+| Function             | Method | Route                                                                      |
+| -------------------- | ------ | -------------------------------------------------------------------------- |
+| Create portal        | POST   | `/announcement-portals`                                                    |
+| Get user's portals   | GET    | `/announcement-portals?userId=...`                                         |
+| Add members          | POST   | `/announcement-portals/:portalId/members`                                  |
+| Create announcement  | POST   | `/announcement-portals/:portalId/announcements`                            |
+| Get announcements    | GET    | `/announcement-portals/:portalId/announcements?userId=...`                 |
+| Get one announcement | GET    | `/announcement-portals/:portalId/announcements/:announcementId?userId=...` |
+| Update announcement  | PATCH  | `/announcement-portals/:portalId/announcements/:announcementId`            |
+| Delete announcement  | DELETE | `/announcement-portals/:portalId/announcements/:announcementId?userId=...` |

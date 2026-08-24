@@ -2,12 +2,16 @@ import { getApi } from "./api";
 
 
 /*
+ * ---------------------------------------------------------
  * Get all announcement portals
- * available to the current user.
+ * available to current user.
+ * ---------------------------------------------------------
  */
+
 export const getUserAnnouncementPortals = async (
     userId
 ) => {
+
     const api = getApi();
 
     const response = await api.get(
@@ -24,12 +28,59 @@ export const getUserAnnouncementPortals = async (
 
 
 /*
- * Get announcements for a portal.
+ * ---------------------------------------------------------
+ * Create announcement portal
+ * ---------------------------------------------------------
  */
+
+export const createAnnouncementPortal = async ({
+    name,
+    description,
+    createdBy,
+    memberIds,
+}) => {
+
+    const api = getApi();
+
+    const response = await api.post(
+        "/announcement-portals",
+        {
+            name,
+            description,
+            createdBy,
+            memberIds,
+        }
+    );
+
+    /*
+     * Your backend may return:
+     *
+     * {
+     *   message: "...",
+     *   portal: {...}
+     * }
+     *
+     * So return portal when available.
+     */
+
+    return (
+        response.data.portal ||
+        response.data
+    );
+};
+
+
+/*
+ * ---------------------------------------------------------
+ * Get announcements
+ * ---------------------------------------------------------
+ */
+
 export const getAnnouncements = async (
     portalId,
     userId
 ) => {
+
     const api = getApi();
 
     const response = await api.get(
@@ -46,13 +97,17 @@ export const getAnnouncements = async (
 
 
 /*
- * Get a single announcement.
+ * ---------------------------------------------------------
+ * Get single announcement
+ * ---------------------------------------------------------
  */
+
 export const getAnnouncement = async (
     portalId,
     announcementId,
     userId
 ) => {
+
     const api = getApi();
 
     const response = await api.get(
@@ -69,18 +124,27 @@ export const getAnnouncement = async (
 
 
 /*
- * Create announcement.
+ * ---------------------------------------------------------
+ * Create announcement
+ * ---------------------------------------------------------
  */
+
 export const createAnnouncement = async (
     portalId,
     formData
 ) => {
+
     const api = getApi();
 
     const response = await api.post(
         `/announcement-portals/${portalId}/announcements`,
         formData,
-        
+        {
+            headers: {
+                "Content-Type":
+                    "multipart/form-data",
+            },
+        }
     );
 
     return response.data.announcement;
@@ -88,13 +152,17 @@ export const createAnnouncement = async (
 
 
 /*
- * Update announcement.
+ * ---------------------------------------------------------
+ * Update announcement
+ * ---------------------------------------------------------
  */
+
 export const updateAnnouncement = async (
     portalId,
     announcementId,
     data
 ) => {
+
     const api = getApi();
 
     const response = await api.patch(
@@ -107,13 +175,17 @@ export const updateAnnouncement = async (
 
 
 /*
- * Delete announcement.
+ * ---------------------------------------------------------
+ * Delete announcement
+ * ---------------------------------------------------------
  */
+
 export const deleteAnnouncement = async (
     portalId,
     announcementId,
     userId
 ) => {
+
     const api = getApi();
 
     const response = await api.delete(

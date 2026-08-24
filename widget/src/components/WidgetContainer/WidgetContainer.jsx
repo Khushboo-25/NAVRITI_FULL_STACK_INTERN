@@ -1399,6 +1399,7 @@ function WidgetContainer({
 
                     <AnnouncementPortal
                         currentUser={currentUser}
+                        users={users}
                         onBack={()=>
                             setActiveSection("chat")
                         }

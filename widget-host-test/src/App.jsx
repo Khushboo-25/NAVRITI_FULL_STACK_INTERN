@@ -3,9 +3,11 @@ import CommunicationWidget from "../../widget/src/CommunicationWidget";
 
 const currentUser = {
     
-        userId: "user-13",
+    userId: "user-13",
         displayName: "Khushboo13",
         role: "admin",
+    
+        
 };
 
 const users = [

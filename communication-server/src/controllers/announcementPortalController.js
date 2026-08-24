@@ -9,25 +9,26 @@ import cloudinary from "../config/cloudinary.js";
       role,
       name,
       description,
-    } = req.body;
-
+      members,
+    } = req.body ||{};
+    console.log("CREATE PORTAL BODY:", req.body);
+console.log("CREATE PORTAL CONTENT TYPE:", req.headers["content-type"]);
+     if (!userId) {
+          return res.status(400).json({
+              message: "userId is required",
+          });
+      }
+      if (!name || !name.trim()) {
+          return res.status(400).json({
+              message: "Portal name is required",
+          });
+      }
     if (role !== "admin") {
       return res.status(403).json({
         message: "Only admins can create announcement portals",
       });
     }
 
-    if (!userId) {
-      return res.status(400).json({
-        message: "userId is required",
-      });
-    }
-
-    if (!name || !name.trim()) {
-      return res.status(400).json({
-        message: "Portal name is required",
-      });
-    }
 
     const portal = await AnnouncementPortal.create({
       name: name.trim(),
@@ -37,20 +38,39 @@ import cloudinary from "../config/cloudinary.js";
 
     
     const membership =
-    await AnnouncementPortalMember.create({
+      await AnnouncementPortalMember.create({
         portalId: portal._id,
         userId,
         role: "host",
         addedBy: userId,
-    });
+      });
 
-  console.log("CREATED PORTAL:", portal);
-  console.log("CREATED HOST MEMBERSHIP:", membership);
+    const participantMembers = Array.isArray(members)
+      ? members
+          .filter((member) => member.userId)
+          .filter((member) => member.userId !== userId)
+          .map((member) => ({
+            portalId: portal._id,
+            userId: member.userId,
+            role: "participant",
+            addedBy: userId,
+          }))
+      : [];
+
+    let createdMembers = [];
+
+    if (participantMembers.length > 0) {
+      createdMembers =
+        await AnnouncementPortalMember.insertMany(
+          participantMembers
+        );
+    }
 
     return res.status(201).json({
       message: "Announcement portal created successfully",
       portal,
       membership,
+      members: createdMembers,
     });
   } catch (error) {
     console.error("Create announcement portal error:", error);
@@ -315,31 +335,43 @@ const getAnnouncements = async (req, res) => {
 
     const announcements = await Announcement.find({
       portalId,
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $gt: new Date() } }
-      ],
+
       $and: [
         {
           $or: [
+            { expiresAt: null },
+            { expiresAt: { $gt: new Date() } },
+          ],
+        },
+        {
+          $or: [
             { targetAudience: "all" },
-            { targetAudience: "selected", targetUserIds: userId }
-          ]
-        }
-      ]
+            {
+              targetAudience: "selected",
+              targetUserIds: userId,
+            },
+          ],
+        },
+      ],
     }).sort({
       publishedAt: -1,
     });
 
+    if (!announcements) {
+      return res.status(404).json({
+        message: "Announcement not found",
+      });
+    }
+
     return res.status(200).json({
-      message: "Announcements fetched successfully",
+      message: "Announcement fetched successfully",
       announcements,
     });
   } catch (error) {
-    console.error("Get announcements error:", error);
+    console.error("Get announcement error:", error);
 
     return res.status(500).json({
-      message: "Failed to fetch announcements",
+      message: "Failed to fetch announcement",
       error: error.message,
     });
   }
@@ -612,6 +644,27 @@ const getAnnouncement = async (req, res) => {
     const announcement = await Announcement.findOne({
       _id: announcementId,
       portalId,
+
+      // Announcement must not be expired
+      $and: [
+        {
+          $or: [
+            { expiresAt: null },
+            { expiresAt: { $gt: new Date() } },
+          ],
+        },
+
+        // User must be part of the target audience
+        {
+          $or: [
+            { targetAudience: "all" },
+            {
+              targetAudience: "selected",
+              targetUserIds: userId,
+            },
+          ],
+        },
+      ],
     });
 
     if (!announcement) {

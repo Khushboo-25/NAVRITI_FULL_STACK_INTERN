@@ -16,6 +16,7 @@ function AnnouncementCard({
     announcement,
     canManage,
     onDelete,
+    onEdit,
 }) {
 
     const handleDelete = () => {
@@ -73,19 +74,31 @@ function AnnouncementCard({
                 </div>
 
 
-                {/* Delete */}
+            {/* Edit & Delete */}
 
-                {canManage && (
+            {canManage && (
+                <div className="announcement-card-actions">
+
+                    <button
+                        type="button"
+                        className="announcement-edit-button"
+                        onClick={() =>
+                            onEdit(announcement)
+                        }
+                    >
+                        Edit
+                    </button>
+
                     <button
                         type="button"
                         className="announcement-delete-button"
-                        onClick={
-                            handleDelete
-                        }
+                        onClick={handleDelete}
                     >
                         Delete
                     </button>
-                )}
+
+                </div>
+            )}
 
             </div>
 

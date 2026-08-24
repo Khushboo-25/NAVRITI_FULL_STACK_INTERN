@@ -7,6 +7,8 @@ function CreateAnnouncementModal({
     isOpen,
     onClose,
     onCreate,
+    users = [],
+    currentUser,
 }) {
 
     const [title, setTitle] =
@@ -26,11 +28,29 @@ function CreateAnnouncementModal({
 
     const [error, setError] =
         useState("");
-
+    const [selectedUserIds, setSelectedUserIds] =
+        useState([]);
 
     if (!isOpen) {
         return null;
     }
+
+    const handleUserToggle = (userId) => {
+
+        setSelectedUserIds((prev) => {
+
+            if (prev.includes(userId)) {
+                return prev.filter(
+                    (id) => id !== userId
+                );
+            }
+
+            return [
+                ...prev,
+                userId,
+            ];
+        });
+    };
 
 
     const handleFileChange = (event) => {
@@ -64,6 +84,16 @@ function CreateAnnouncementModal({
 
             return;
         }
+        if (
+            targetAudience === "selected" &&
+            selectedUserIds.length === 0
+        ) {
+            setError(
+                "Please select at least one user"
+            );
+
+            return;
+        }
 
 
         try {
@@ -76,6 +106,10 @@ function CreateAnnouncementModal({
                 title: title.trim(),
                 content: content.trim(),
                 targetAudience,
+                targetUserIds:
+                    targetAudience === "selected"
+                        ? selectedUserIds
+                        : [],
                 files,
             });
 
@@ -83,6 +117,7 @@ function CreateAnnouncementModal({
             setTitle("");
             setContent("");
             setTargetAudience("all");
+            setSelectedUserIds([]);
             setFiles([]);
 
 
@@ -222,16 +257,78 @@ function CreateAnnouncementModal({
                     </label>
 
 
-                    {targetAudience ===
-                        "selected" && (
+                    {targetAudience === "selected" && (
 
-                        <div className="announcement-selected-users-note">
+                        <div className="announcement-selected-users">
 
-                            Selected-user picker
-                            will be added next.
+                            <div className="announcement-selected-users-title">
+                                Select users
+                            </div>
+
+                            {users.length === 0 ? (
+
+                                <div className="announcement-selected-users-empty">
+                                    No users available.
+                                </div>
+
+                            ) : (
+
+                                <div className="announcement-user-list">
+
+                                    {users
+                                        .filter(
+                                            (user) =>
+                                                user.userId !==
+                                                currentUser?.userId
+                                        )
+                                        .map((user) => {
+
+                                            const userId =
+                                                user.userId;
+
+                                            const isSelected =
+                                                selectedUserIds.includes(
+                                                    userId
+                                                );
+
+                                            return (
+                                                <label
+                                                    key={userId}
+                                                    className="announcement-user-option"
+                                                >
+
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            isSelected
+                                                        }
+                                                        onChange={() =>
+                                                            handleUserToggle(
+                                                                userId
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            submitting
+                                                        }
+                                                    />
+
+                                                    <span>
+                                                        {
+                                                            user.name ||
+                                                            user.displayName ||
+                                                            user.email ||
+                                                            userId
+                                                        }
+                                                    </span>
+
+                                                </label>
+                                            );
+                                        })}
+
+                                </div>
+                            )}
 
                         </div>
-
                     )}
 
 

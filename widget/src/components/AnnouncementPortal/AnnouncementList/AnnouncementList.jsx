@@ -8,6 +8,7 @@ function AnnouncementList({
     selectedPortal,
     loading,
     onDelete,
+    onEdit,
 }) {
 
     if (loading) {
@@ -65,6 +66,7 @@ function AnnouncementList({
                         onDelete={
                             onDelete
                         }
+                        onEdit={onEdit}
                     />
 
                 )
