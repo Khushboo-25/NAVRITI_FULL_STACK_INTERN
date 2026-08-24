@@ -17,6 +17,9 @@ function CreatePortalModal({
     const [description, setDescription] =
         useState("");
 
+    const [targetAudience, setTargetAudience] =
+        useState("all");
+
     const [selectedMembers, setSelectedMembers] =
         useState([]);
 
@@ -42,6 +45,7 @@ function CreatePortalModal({
 
         setName("");
         setDescription("");
+        setTargetAudience("all");
         setSelectedMembers([]);
         setSearch("");
         setError("");
@@ -114,6 +118,27 @@ function CreatePortalModal({
     };
 
 
+    const handleAudienceChange = (
+        event
+    ) => {
+
+        const value =
+            event.target.value;
+
+        setTargetAudience(value);
+
+        /*
+         * If portal is for everyone,
+         * selected members are irrelevant.
+         */
+
+        if (value === "all") {
+            setSelectedMembers([]);
+        }
+
+    };
+
+
     const handleSubmit = async (event) => {
 
         event.preventDefault();
@@ -129,10 +154,58 @@ function CreatePortalModal({
         }
 
 
+        /*
+        * Selected portal must have
+        * at least one candidate.
+        */
+
+        if (
+            targetAudience === "selected" &&
+            selectedMembers.length === 0
+        ) {
+
+            setError(
+                "Select at least one candidate"
+            );
+
+            return;
+        }
+
+
         try {
 
             setSubmitting(true);
             setError("");
+
+
+            /*
+            * For "all":
+            * add every available user
+            * as a participant.
+            *
+            * For "selected":
+            * add only selected users.
+            */
+
+            const members =
+                targetAudience === "all"
+                    ? availableUsers.map(
+                        (user) => ({
+                            userId:
+                                user.userId,
+
+                            role:
+                                "participant",
+                        })
+                    )
+                    : selectedMembers.map(
+                        (userId) => ({
+                            userId,
+
+                            role:
+                                "participant",
+                        })
+                    );
 
 
             await onCreate({
@@ -143,10 +216,22 @@ function CreatePortalModal({
                 description:
                     description.trim(),
 
-                memberIds:
-                    selectedMembers,
+                targetAudience,
+
+                members,
 
             });
+
+
+            /*
+            * Reset after successful creation.
+            */
+
+            setName("");
+            setDescription("");
+            setTargetAudience("all");
+            setSelectedMembers([]);
+            setSearch("");
 
 
         } catch (error) {
@@ -188,7 +273,7 @@ function CreatePortalModal({
 
                         <p>
                             Create a portal and choose
-                            its initial members.
+                            who can access it.
                         </p>
 
                     </div>
@@ -266,133 +351,176 @@ function CreatePortalModal({
                     </label>
 
 
-                    {/* Members */}
+                    {/* Audience */}
 
-                    <div className="create-portal-members">
+                    <label>
 
-                        <div className="create-portal-members-header">
+                        Audience
 
-                            <div>
+                        <select
+                            value={
+                                targetAudience
+                            }
+                            onChange={
+                                handleAudienceChange
+                            }
+                            disabled={
+                                submitting
+                            }
+                        >
 
-                                <div className="create-portal-members-title">
-                                    Members
+                            <option value="all">
+                                Everyone
+                            </option>
+
+                            <option value="selected">
+                                Selected candidates
+                            </option>
+
+                        </select>
+
+                    </label>
+
+
+                    {/* Selected Members */}
+
+                    {targetAudience ===
+                        "selected" && (
+
+                        <div className="create-portal-members">
+
+                            <div className="create-portal-members-header">
+
+                                <div>
+
+                                    <div className="create-portal-members-title">
+                                        Candidates
+                                    </div>
+
+                                    <div className="create-portal-members-count">
+                                        {
+                                            selectedMembers.length
+                                        }{" "}
+                                        selected
+                                    </div>
+
                                 </div>
 
-                                <div className="create-portal-members-count">
-                                    {selectedMembers.length} selected
-                                </div>
+                            </div>
+
+
+                            {/* Search */}
+
+                            <input
+                                type="text"
+                                className="create-portal-member-search"
+                                value={search}
+                                onChange={(event) =>
+                                    setSearch(
+                                        event.target.value
+                                    )
+                                }
+                                placeholder="Search users..."
+                                disabled={
+                                    submitting
+                                }
+                            />
+
+
+                            {/* User list */}
+
+                            <div className="create-portal-user-list">
+
+                                {filteredUsers.length ===
+                                    0 && (
+
+                                    <div className="create-portal-no-users">
+                                        No users found
+                                    </div>
+
+                                )}
+
+
+                                {filteredUsers.map(
+                                    (user) => {
+
+                                        const selected =
+                                            selectedMembers.includes(
+                                                user.userId
+                                            );
+
+
+                                        return (
+
+                                            <button
+                                                key={
+                                                    user.userId
+                                                }
+                                                type="button"
+                                                className={`create-portal-user ${
+                                                    selected
+                                                        ? "selected"
+                                                        : ""
+                                                }`}
+                                                onClick={() =>
+                                                    toggleMember(
+                                                        user.userId
+                                                    )
+                                                }
+                                                disabled={
+                                                    submitting
+                                                }
+                                            >
+
+                                                <span
+                                                    className={`create-portal-checkbox ${
+                                                        selected
+                                                            ? "checked"
+                                                            : ""
+                                                    }`}
+                                                >
+                                                    {selected
+                                                        ? "✓"
+                                                        : ""}
+                                                </span>
+
+
+                                                <span className="create-portal-user-info">
+
+                                                    <span className="create-portal-user-name">
+                                                        {
+                                                            user.displayName ||
+                                                            user.userId
+                                                        }
+                                                    </span>
+
+                                                    <span className="create-portal-user-id">
+                                                        {
+                                                            user.userId
+                                                        }
+                                                    </span>
+
+                                                </span>
+
+
+                                                <span className="create-portal-user-role">
+                                                    {
+                                                        user.role
+                                                    }
+                                                </span>
+
+                                            </button>
+
+                                        );
+
+                                    }
+                                )}
 
                             </div>
 
                         </div>
 
-
-                        {/* Search */}
-
-                        <input
-                            type="text"
-                            className="create-portal-member-search"
-                            value={search}
-                            onChange={(event) =>
-                                setSearch(
-                                    event.target.value
-                                )
-                            }
-                            placeholder="Search users..."
-                            disabled={submitting}
-                        />
-
-
-                        {/* User list */}
-
-                        <div className="create-portal-user-list">
-
-                            {filteredUsers.length === 0 && (
-
-                                <div className="create-portal-no-users">
-                                    No users found
-                                </div>
-
-                            )}
-
-
-                            {filteredUsers.map(
-                                (user) => {
-
-                                    const selected =
-                                        selectedMembers.includes(
-                                            user.userId
-                                        );
-
-
-                                    return (
-
-                                        <button
-                                            key={
-                                                user.userId
-                                            }
-                                            type="button"
-                                            className={`create-portal-user ${
-                                                selected
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                toggleMember(
-                                                    user.userId
-                                                )
-                                            }
-                                            disabled={
-                                                submitting
-                                            }
-                                        >
-
-                                            <span
-                                                className={`create-portal-checkbox ${
-                                                    selected
-                                                        ? "checked"
-                                                        : ""
-                                                }`}
-                                            >
-                                                {selected
-                                                    ? "✓"
-                                                    : ""}
-                                            </span>
-
-
-                                            <span className="create-portal-user-info">
-
-                                                <span className="create-portal-user-name">
-                                                    {
-                                                        user.displayName
-                                                    }
-                                                </span>
-
-                                                <span className="create-portal-user-id">
-                                                    {
-                                                        user.userId
-                                                    }
-                                                </span>
-
-                                            </span>
-
-
-                                            <span className="create-portal-user-role">
-                                                {
-                                                    user.role
-                                                }
-                                            </span>
-
-                                        </button>
-
-                                    );
-
-                                }
-                            )}
-
-                        </div>
-
-                    </div>
+                    )}
 
 
                     {/* Actions */}
@@ -402,7 +530,9 @@ function CreatePortalModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            disabled={submitting}
+                            disabled={
+                                submitting
+                            }
                             className="create-portal-cancel"
                         >
                             Cancel

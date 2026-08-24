@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
     getUserAnnouncementPortals,
@@ -9,7 +9,8 @@ import {
     updateAnnouncement,
 } from "../../services/announcementPortalService";
 
-import AnnouncementList from "./AnnouncementList/AnnouncementList.jsx";
+import AnnouncementList
+    from "./AnnouncementList/AnnouncementList.jsx";
 
 import CreateAnnouncementModal
     from "./CreateAnnouncementModal/CreateAnnouncementModal.jsx";
@@ -17,18 +18,23 @@ import CreateAnnouncementModal
 import CreatePortalModal
     from "./CreatePortalModal/CreatePortalModal.jsx";
 
-import "./AnnouncementPortal.css";
-
 import EditAnnouncementModal
     from "./EditAnnouncementModal/EditAnnouncementModal.jsx";
+
+import "./AnnouncementPortal.css";
+
+
 function AnnouncementPortal({
     currentUser,
     users = [],
     onBack,
 }) {
 
-    const userId = currentUser?.userId;
-    const userRole = currentUser?.role;
+    const userId =
+        currentUser?.userId;
+
+    const userRole =
+        currentUser?.role;
 
 
     /*
@@ -37,7 +43,8 @@ function AnnouncementPortal({
      * --------------------------------------------------
      */
 
-    const [portals, setPortals] = useState([]);
+    const [portals, setPortals] =
+        useState([]);
 
     const [selectedPortal, setSelectedPortal] =
         useState(null);
@@ -60,19 +67,99 @@ function AnnouncementPortal({
 
     const [isCreateAnnouncementOpen, setIsCreateAnnouncementOpen] =
         useState(false);
+
     const [editingAnnouncement, setEditingAnnouncement] =
         useState(null);
 
 
+    /*
+     * --------------------------------------------------
+     * Portal members available for announcements
+     * --------------------------------------------------
+     *
+     * If the backend returns:
+     *
+     * selectedPortal.members
+     *
+     * we use those membership userIds to filter
+     * the global users list.
+     *
+     * The userId is always preserved.
+     * --------------------------------------------------
+     */
 
+    const announcementUsers = useMemo(() => {
+
+        if (!selectedPortal) {
+            return [];
+        }
+
+
+        /*
+         * If backend provides members,
+         * restrict the announcement picker
+         * to actual portal members.
+         */
+
+        if (
+            Array.isArray(
+                selectedPortal.members
+            )
+        ) {
+
+            const memberIds =
+                selectedPortal.members
+                    .map(
+                        (member) =>
+                            member.userId
+                    )
+                    .filter(Boolean);
+
+
+            return users.filter(
+                (user) =>
+                    memberIds.includes(
+                        user.userId
+                    )
+            );
+        }
+
+
+        /*
+         * Current backend portal response
+         * does not include members.
+         *
+         * Until membership is included,
+         * use the supplied user list.
+         *
+         * Backend still validates selected
+         * users before creating the announcement.
+         */
+
+        return users;
+
+    }, [
+        selectedPortal,
+        users,
+    ]);
+
+
+    /*
+     * --------------------------------------------------
+     * Edit announcement
+     * --------------------------------------------------
+     */
 
     const handleEditAnnouncement = (
         announcement
     ) => {
+
         setEditingAnnouncement(
             announcement
         );
     };
+
+
     const handleUpdateAnnouncement = async ({
         title,
         content,
@@ -85,28 +172,53 @@ function AnnouncementPortal({
             return;
         }
 
-        const updatedAnnouncement =
-            await updateAnnouncement(
-                selectedPortal._id,
-                editingAnnouncement._id,
-                {
-                    userId,
-                    title,
-                    content,
-                }
+
+        try {
+
+            setError("");
+
+
+            const updatedAnnouncement =
+                await updateAnnouncement(
+                    selectedPortal._id,
+                    editingAnnouncement._id,
+                    {
+                        userId,
+                        title,
+                        content,
+                    }
+                );
+
+
+            setAnnouncements((prev) =>
+                prev.map(
+                    (announcement) =>
+                        announcement._id ===
+                        updatedAnnouncement._id
+                            ? updatedAnnouncement
+                            : announcement
+                )
             );
 
-        setAnnouncements((prev) =>
-            prev.map((announcement) =>
-                announcement._id ===
-                updatedAnnouncement._id
-                    ? updatedAnnouncement
-                    : announcement
-            )
-        );
 
-        setEditingAnnouncement(null);
+            setEditingAnnouncement(null);
+
+        } catch (error) {
+
+            console.error(
+                "Failed to update announcement:",
+                error
+            );
+
+
+            setError(
+                error?.response?.data?.message ||
+                "Failed to update announcement"
+            );
+
+        }
     };
+
 
     /*
      * --------------------------------------------------
@@ -120,20 +232,24 @@ function AnnouncementPortal({
             return;
         }
 
+
         try {
 
             setLoadingPortals(true);
             setError("");
+
 
             const data =
                 await getUserAnnouncementPortals(
                     userId
                 );
 
+
             console.log(
                 "Announcement portals:",
                 data
             );
+
 
             setPortals(data);
 
@@ -143,28 +259,33 @@ function AnnouncementPortal({
              * if it still exists.
              */
 
-            setSelectedPortal((currentSelected) => {
+            setSelectedPortal(
+                (currentSelected) => {
 
-                if (!data.length) {
-                    return null;
-                }
+                    if (!data.length) {
+                        return null;
+                    }
 
-                if (!currentSelected) {
-                    return data[0];
-                }
 
-                const updatedPortal =
-                    data.find(
-                        (portal) =>
-                            portal._id ===
-                            currentSelected._id
+                    if (!currentSelected) {
+                        return data[0];
+                    }
+
+
+                    const updatedPortal =
+                        data.find(
+                            (portal) =>
+                                portal._id ===
+                                currentSelected._id
+                        );
+
+
+                    return (
+                        updatedPortal ||
+                        data[0]
                     );
-
-                return (
-                    updatedPortal ||
-                    data[0]
-                );
-            });
+                }
+            );
 
         } catch (error) {
 
@@ -173,7 +294,9 @@ function AnnouncementPortal({
                 error
             );
 
+
             setError(
+                error?.response?.data?.message ||
                 "Failed to load announcement portals"
             );
 
@@ -184,6 +307,12 @@ function AnnouncementPortal({
         }
     };
 
+
+    /*
+     * --------------------------------------------------
+     * Initial portal load
+     * --------------------------------------------------
+     */
 
     useEffect(() => {
 
@@ -204,7 +333,9 @@ function AnnouncementPortal({
             !selectedPortal ||
             !userId
         ) {
+
             setAnnouncements([]);
+
             return;
         }
 
@@ -216,34 +347,41 @@ function AnnouncementPortal({
                 setLoadingAnnouncements(true);
                 setError("");
 
+
                 const data =
                     await getAnnouncements(
                         selectedPortal._id,
                         userId
                     );
 
+
                 setAnnouncements(data);
 
             } catch (error) {
+
                 console.error(
                     "Failed to load announcements:",
                     error
                 );
+
 
                 console.error(
                     "Status:",
                     error?.response?.status
                 );
 
+
                 console.error(
                     "Backend response:",
                     error?.response?.data
                 );
 
+
                 setError(
                     error?.response?.data?.message ||
                     "Failed to load announcements"
                 );
+
             } finally {
 
                 setLoadingAnnouncements(false);
@@ -269,25 +407,34 @@ function AnnouncementPortal({
     const handleCreatePortal = async ({
         name,
         description,
-        memberIds,
+        targetAudience,
+        members,
     }) => {
 
         try {
 
             setError("");
 
+
             const createdPortal =
                 await createAnnouncementPortal({
+
                     name,
+
                     description,
-                    createdBy: userId,
-                    memberIds,
+
+                    userId,
+
+                    role: userRole,
+                    targetAudience,
+
+                    members,
+
                 });
 
 
             /*
-             * Refresh portals so the newly created
-             * portal appears in the portal list.
+             * Refresh portal list.
              */
 
             await loadPortals();
@@ -297,9 +444,14 @@ function AnnouncementPortal({
              * Select newly created portal.
              */
 
-            setSelectedPortal(createdPortal);
+            setSelectedPortal(
+                createdPortal
+            );
 
-            setIsCreatePortalOpen(false);
+
+            setIsCreatePortalOpen(
+                false
+            );
 
         } catch (error) {
 
@@ -308,10 +460,12 @@ function AnnouncementPortal({
                 error
             );
 
+
             setError(
                 error?.response?.data?.message ||
                 "Failed to create announcement portal"
             );
+
 
             throw error;
         }
@@ -329,7 +483,7 @@ function AnnouncementPortal({
         content,
         targetAudience,
         targetUserIds,
-        files,
+        files = [],
     }) => {
 
         if (!selectedPortal) {
@@ -337,71 +491,146 @@ function AnnouncementPortal({
         }
 
 
-        const formData =
-            new FormData();
+        try {
+
+            setError("");
 
 
-        formData.append(
-            "senderId",
-            userId
-        );
+            const formData =
+                new FormData();
 
-
-        formData.append(
-            "title",
-            title
-        );
-
-
-        formData.append(
-            "content",
-            content
-        );
-
-
-        formData.append(
-            "targetAudience",
-            targetAudience
-        );
-        if (
-            targetAudience === "selected" &&
-            targetUserIds?.length > 0
-        ) {
-            targetUserIds.forEach(
-                (targetUserId) => {
-                    formData.append(
-                        "targetUserIds",
-                        targetUserId
-                    );
-                }
-            );
-        }
-
-
-        files.forEach((file) => {
 
             formData.append(
-                "attachments",
-                file
-            );
-
-        });
-
-
-        const announcement =
-            await createAnnouncement(
-                selectedPortal._id,
-                formData
+                "senderId",
+                userId
             );
 
 
-        setAnnouncements((prev) => [
-            announcement,
-            ...prev,
-        ]);
+            formData.append(
+                "title",
+                title
+            );
 
 
-        setIsCreateAnnouncementOpen(false);
+            formData.append(
+                "content",
+                content
+            );
+
+
+            formData.append(
+                "targetAudience",
+                targetAudience
+            );
+
+
+            /*
+             * Selected users.
+             *
+             * IMPORTANT:
+             * These are actual userIds:
+             *
+             * ["user-14"]
+             *
+             * not display names.
+             */
+
+            if (
+                targetAudience === "selected" &&
+                Array.isArray(targetUserIds)
+            ) {
+
+                targetUserIds
+                    .filter(Boolean)
+                    .forEach(
+                        (targetUserId) => {
+
+                            formData.append(
+                                "targetUserIds",
+                                targetUserId
+                            );
+
+                        }
+                    );
+            }
+
+
+            /*
+             * Attachments
+             */
+
+            files.forEach(
+                (file) => {
+
+                    formData.append(
+                        "attachments",
+                        file
+                    );
+
+                }
+            );
+
+
+            console.log(
+                "Creating announcement:",
+                {
+                    portalId:
+                        selectedPortal._id,
+
+                    targetAudience,
+
+                    targetUserIds,
+                }
+            );
+
+
+            const announcement =
+                await createAnnouncement(
+                    selectedPortal._id,
+                    formData
+                );
+
+
+            setAnnouncements(
+                (prev) => [
+                    announcement,
+                    ...prev,
+                ]
+            );
+
+
+            setIsCreateAnnouncementOpen(
+                false
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Failed to create announcement:",
+                error
+            );
+
+
+            console.error(
+                "Status:",
+                error?.response?.status
+            );
+
+
+            console.error(
+                "Backend response:",
+                error?.response?.data
+            );
+
+
+            setError(
+                error?.response?.data?.message ||
+                "Failed to create announcement"
+            );
+
+
+            throw error;
+        }
     };
 
 
@@ -422,6 +651,9 @@ function AnnouncementPortal({
 
         try {
 
+            setError("");
+
+
             await deleteAnnouncement(
                 selectedPortal._id,
                 announcementId,
@@ -429,12 +661,13 @@ function AnnouncementPortal({
             );
 
 
-            setAnnouncements((prev) =>
-                prev.filter(
-                    (announcement) =>
-                        announcement._id !==
-                        announcementId
-                )
+            setAnnouncements(
+                (prev) =>
+                    prev.filter(
+                        (announcement) =>
+                            announcement._id !==
+                            announcementId
+                    )
             );
 
         } catch (error) {
@@ -444,7 +677,9 @@ function AnnouncementPortal({
                 error
             );
 
+
             setError(
+                error?.response?.data?.message ||
                 "Failed to delete announcement"
             );
         }
@@ -460,6 +695,7 @@ function AnnouncementPortal({
     if (!userId) {
 
         return (
+
             <div className="announcement-portal">
 
                 <div className="announcement-empty">
@@ -471,6 +707,7 @@ function AnnouncementPortal({
                 </div>
 
             </div>
+
         );
     }
 
@@ -484,18 +721,23 @@ function AnnouncementPortal({
     if (loadingPortals) {
 
         return (
+
             <div className="announcement-portal">
 
                 <div className="announcement-loading">
+
                     Loading announcements...
+
                 </div>
 
             </div>
+
         );
     }
 
 
     return (
+
         <div className="announcement-portal">
 
 
@@ -541,7 +783,9 @@ function AnnouncementPortal({
                         type="button"
                         className="announcement-create-portal-button"
                         onClick={() =>
-                            setIsCreatePortalOpen(true)
+                            setIsCreatePortalOpen(
+                                true
+                            )
                         }
                     >
                         + Portal
@@ -561,49 +805,59 @@ function AnnouncementPortal({
                 <div className="announcement-portals">
 
                     <div className="announcement-portal-label">
+
                         Portals
+
                     </div>
 
 
                     <div className="announcement-portal-list">
 
-                        {portals.map((portal) => {
+                        {portals.map(
+                            (portal) => {
 
-                            const isSelected =
-                                selectedPortal?._id ===
-                                portal._id;
+                                const isSelected =
+                                    selectedPortal?._id ===
+                                    portal._id;
 
 
-                            return (
+                                return (
 
-                                <button
-                                    key={portal._id}
-                                    type="button"
-                                    className={`announcement-portal-item ${
-                                        isSelected
-                                            ? "active"
-                                            : ""
-                                    }`}
-                                    onClick={() =>
-                                        setSelectedPortal(
-                                            portal
-                                        )
-                                    }
-                                >
+                                    <button
+                                        key={
+                                            portal._id
+                                        }
+                                        type="button"
+                                        className={`announcement-portal-item ${
+                                            isSelected
+                                                ? "active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            setSelectedPortal(
+                                                portal
+                                            )
+                                        }
+                                    >
 
-                                    <span>
-                                        {portal.name}
-                                    </span>
+                                        <span>
+                                            {
+                                                portal.name
+                                            }
+                                        </span>
 
-                                    <small>
-                                        {portal.role}
-                                    </small>
+                                        <small>
+                                            {
+                                                portal.role
+                                            }
+                                        </small>
 
-                                </button>
+                                    </button>
 
-                            );
+                                );
 
-                        })}
+                            }
+                        )}
 
                     </div>
 
@@ -619,7 +873,9 @@ function AnnouncementPortal({
             {error && (
 
                 <div className="announcement-error">
+
                     {error}
+
                 </div>
 
             )}
@@ -669,14 +925,18 @@ function AnnouncementPortal({
                             <div className="announcement-selected-portal-title-row">
 
                                 <h3>
-                                    {selectedPortal.name}
+                                    {
+                                        selectedPortal.name
+                                    }
                                 </h3>
 
 
                                 <span
                                     className={`announcement-role-badge ${selectedPortal.role}`}
                                 >
-                                    {selectedPortal.role}
+                                    {
+                                        selectedPortal.role
+                                    }
                                 </span>
 
                             </div>
@@ -718,11 +978,21 @@ function AnnouncementPortal({
 
 
                     <AnnouncementList
-                        announcements={announcements}
-                        selectedPortal={selectedPortal}
-                        loading={loadingAnnouncements}
-                        onDelete={handleDeleteAnnouncement}
-                        onEdit={handleEditAnnouncement}
+                        announcements={
+                            announcements
+                        }
+                        selectedPortal={
+                            selectedPortal
+                        }
+                        loading={
+                            loadingAnnouncements
+                        }
+                        onDelete={
+                            handleDeleteAnnouncement
+                        }
+                        onEdit={
+                            handleEditAnnouncement
+                        }
                     />
 
                 </div>
@@ -772,28 +1042,43 @@ function AnnouncementPortal({
                     handleCreateAnnouncement
                 }
                 users={
-                    users
+                    announcementUsers
                 }
                 currentUser={
                     currentUser
                 }
             />
-            <EditAnnouncementModal
-                isOpen={
-                    !!editingAnnouncement
-                }
-                announcement={
-                    editingAnnouncement
-                }
-                onClose={() =>
-                    setEditingAnnouncement(null)
-                }
-                onUpdate={
-                    handleUpdateAnnouncement
-                }
-            />
+
+
+            {/* =========================================
+                Edit Announcement Modal
+            ========================================== */}
+
+            {editingAnnouncement && (
+
+                <EditAnnouncementModal
+                    isOpen={
+                        Boolean(
+                            editingAnnouncement
+                        )
+                    }
+                    announcement={
+                        editingAnnouncement
+                    }
+                    onClose={() =>
+                        setEditingAnnouncement(
+                            null
+                        )
+                    }
+                    onUpdate={
+                        handleUpdateAnnouncement
+                    }
+                />
+
+            )}
 
         </div>
+
     );
 }
 

@@ -36,8 +36,10 @@ export const getUserAnnouncementPortals = async (
 export const createAnnouncementPortal = async ({
     name,
     description,
-    createdBy,
-    memberIds,
+    userId,
+    role,
+    targetAudience,
+    members,
 }) => {
 
     const api = getApi();
@@ -47,21 +49,12 @@ export const createAnnouncementPortal = async ({
         {
             name,
             description,
-            createdBy,
-            memberIds,
+            userId,
+            role,
+            targetAudience,
+            members,
         }
     );
-
-    /*
-     * Your backend may return:
-     *
-     * {
-     *   message: "...",
-     *   portal: {...}
-     * }
-     *
-     * So return portal when available.
-     */
 
     return (
         response.data.portal ||
@@ -139,12 +132,7 @@ export const createAnnouncement = async (
     const response = await api.post(
         `/announcement-portals/${portalId}/announcements`,
         formData,
-        {
-            headers: {
-                "Content-Type":
-                    "multipart/form-data",
-            },
-        }
+        
     );
 
     return response.data.announcement;
