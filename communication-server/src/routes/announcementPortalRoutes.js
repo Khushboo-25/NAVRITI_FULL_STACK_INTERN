@@ -12,7 +12,37 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   getUserAnnouncementPortals,
+  getPortalMembers,
+  removePortalMember,
+  updatePortalMemberRole,
+  deleteAnnouncementPortal,
 } from "../controllers/announcementPortalController.js";
+
+
+router.post(
+    "/:portalId/members",
+    addPortalMembers
+);
+
+router.delete(
+    "/:portalId/members/:userId",
+    removePortalMember
+);
+
+router.patch(
+    "/:portalId/members/:userId/role",
+    updatePortalMemberRole
+);
+
+router.delete(
+    "/:portalId",
+    deleteAnnouncementPortal
+);
+
+router.get(
+    "/:portalId/members",
+    getPortalMembers
+);
 router.post(
   "/",
   createAnnouncementPortal

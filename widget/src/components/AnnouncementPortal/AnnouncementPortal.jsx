@@ -7,6 +7,11 @@ import {
     deleteAnnouncement,
     createAnnouncementPortal,
     updateAnnouncement,
+    getAnnouncementPortalMembers,
+    addPortalMembers,
+    removePortalMember,
+    updatePortalMemberRole,
+    deleteAnnouncementPortal,
 } from "../../services/announcementPortalService";
 
 import AnnouncementList
@@ -74,17 +79,140 @@ function AnnouncementPortal({
 
     /*
      * --------------------------------------------------
-     * Portal members available for announcements
+     * Portal Members
      * --------------------------------------------------
-     *
-     * If the backend returns:
-     *
-     * selectedPortal.members
-     *
-     * we use those membership userIds to filter
-     * the global users list.
-     *
-     * The userId is always preserved.
+     */
+
+    const [portalMembers, setPortalMembers] =
+        useState([]);
+
+    const [membersLoading, setMembersLoading] =
+        useState(false);
+
+    const [showMembers, setShowMembers] =
+        useState(false);
+    const [showAddMember, setShowAddMember] =
+        useState(false);
+
+    const [selectedNewMembers, setSelectedNewMembers] =
+        useState([]);
+
+    const [addingMembers, setAddingMembers] =
+        useState(false);
+
+
+
+    const handleDeletePortal = async () => {
+
+        if (!selectedPortal) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Are you sure you want to delete "${selectedPortal.name}"?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+
+            setError("");
+
+            await deleteAnnouncementPortal(
+                selectedPortal._id,
+                userId
+            );
+
+            /*
+            * Remove deleted portal from local list
+            */
+            setPortals((prev) =>
+                prev.filter(
+                    (portal) =>
+                        portal._id !== selectedPortal._id
+                )
+            );
+
+            /*
+            * Clear selected portal
+            */
+            setSelectedPortal(null);
+
+            /*
+            * Clear announcements and members
+            */
+            setAnnouncements([]);
+            setPortalMembers([]);
+
+        } catch (error) {
+
+            console.error(
+                "Delete portal error:",
+                error
+            );
+
+            setError(
+                error?.response?.data?.message ||
+                "Failed to delete announcement portal"
+            );
+        }
+    };
+
+    const handleRoleChange = async (
+        memberUserId,
+        newRole
+    ) => {
+
+        if (!selectedPortal) {
+            return;
+        }
+
+        if (selectedPortal.role !== "host") {
+            return;
+        }
+
+        if (memberUserId === userId) {
+            return;
+        }
+
+        try {
+
+            setError("");
+
+            await updatePortalMemberRole(
+                selectedPortal._id,
+                memberUserId,
+                userId,
+                newRole
+            );
+
+            const updatedMembers =
+                await getAnnouncementPortalMembers(
+                    selectedPortal._id,
+                    userId
+                );
+
+            setPortalMembers(updatedMembers);
+
+        } catch (error) {
+
+            console.error(
+                "Update member role error:",
+                error.response?.data || error
+            );
+
+            setError(
+                error.response?.data?.message ||
+                "Failed to update member role"
+            );
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Portal members available for announcements
      * --------------------------------------------------
      */
 
@@ -109,6 +237,29 @@ function AnnouncementPortal({
     }, [
         selectedPortal,
         users,
+    ]);
+
+
+    const availablePortalMembers = useMemo(() => {
+
+        const existingMemberIds =
+            portalMembers.map(
+                (member) => member.userId
+            );
+
+        return users.filter(
+            (user) =>
+                user.userId &&
+                user.userId !== userId &&
+                !existingMemberIds.includes(
+                    user.userId
+                )
+        );
+
+    }, [
+        users,
+        portalMembers,
+        userId,
     ]);
 
 
@@ -140,11 +291,9 @@ function AnnouncementPortal({
             return;
         }
 
-
         try {
 
             setError("");
-
 
             const updatedAnnouncement =
                 await updateAnnouncement(
@@ -157,7 +306,6 @@ function AnnouncementPortal({
                     }
                 );
 
-
             setAnnouncements((prev) =>
                 prev.map(
                     (announcement) =>
@@ -168,7 +316,6 @@ function AnnouncementPortal({
                 )
             );
 
-
             setEditingAnnouncement(null);
 
         } catch (error) {
@@ -178,12 +325,10 @@ function AnnouncementPortal({
                 error
             );
 
-
             setError(
                 error?.response?.data?.message ||
                 "Failed to update announcement"
             );
-
         }
     };
 
@@ -200,24 +345,20 @@ function AnnouncementPortal({
             return;
         }
 
-
         try {
 
             setLoadingPortals(true);
             setError("");
-
 
             const data =
                 await getUserAnnouncementPortals(
                     userId
                 );
 
-
             console.log(
                 "Announcement portals:",
                 data
             );
-
 
             setPortals(data);
 
@@ -234,11 +375,9 @@ function AnnouncementPortal({
                         return null;
                     }
 
-
                     if (!currentSelected) {
                         return data[0];
                     }
-
 
                     const updatedPortal =
                         data.find(
@@ -246,7 +385,6 @@ function AnnouncementPortal({
                                 portal._id ===
                                 currentSelected._id
                         );
-
 
                     return (
                         updatedPortal ||
@@ -262,7 +400,6 @@ function AnnouncementPortal({
                 error
             );
 
-
             setError(
                 error?.response?.data?.message ||
                 "Failed to load announcement portals"
@@ -274,6 +411,60 @@ function AnnouncementPortal({
 
         }
     };
+
+
+    /*
+     * --------------------------------------------------
+     * Load portal members
+     * --------------------------------------------------
+     */
+
+    useEffect(() => {
+
+        if (
+            !selectedPortal?._id ||
+            !currentUser?.userId
+        ) {
+            setPortalMembers([]);
+            return;
+        }
+
+        const loadPortalMembers = async () => {
+
+            try {
+
+                setMembersLoading(true);
+
+                const members =
+                    await getAnnouncementPortalMembers(
+                        selectedPortal._id,
+                        currentUser.userId
+                    );
+
+                setPortalMembers(members);
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to load portal members:",
+                    error
+                );
+
+                setPortalMembers([]);
+
+            } finally {
+
+                setMembersLoading(false);
+
+            }
+        };
+
+        loadPortalMembers();
+
+    }, [
+        selectedPortal?._id,
+        currentUser?.userId,
+    ]);
 
 
     /*
@@ -307,7 +498,6 @@ function AnnouncementPortal({
             return;
         }
 
-
         const loadAnnouncements = async () => {
 
             try {
@@ -315,13 +505,11 @@ function AnnouncementPortal({
                 setLoadingAnnouncements(true);
                 setError("");
 
-
                 const data =
                     await getAnnouncements(
                         selectedPortal._id,
                         userId
                     );
-
 
                 setAnnouncements(data);
 
@@ -332,18 +520,15 @@ function AnnouncementPortal({
                     error
                 );
 
-
                 console.error(
                     "Status:",
                     error?.response?.status
                 );
 
-
                 console.error(
                     "Backend response:",
                     error?.response?.data
                 );
-
 
                 setError(
                     error?.response?.data?.message ||
@@ -356,7 +541,6 @@ function AnnouncementPortal({
 
             }
         };
-
 
         loadAnnouncements();
 
@@ -383,7 +567,6 @@ function AnnouncementPortal({
 
             setError("");
 
-
             const createdPortal =
                 await createAnnouncementPortal({
 
@@ -394,6 +577,7 @@ function AnnouncementPortal({
                     userId,
 
                     role: userRole,
+
                     targetAudience,
 
                     members,
@@ -416,7 +600,6 @@ function AnnouncementPortal({
                 createdPortal
             );
 
-
             setIsCreatePortalOpen(
                 false
             );
@@ -428,12 +611,10 @@ function AnnouncementPortal({
                 error
             );
 
-
             setError(
                 error?.response?.data?.message ||
                 "Failed to create announcement portal"
             );
-
 
             throw error;
         }
@@ -458,11 +639,9 @@ function AnnouncementPortal({
             return;
         }
 
-
         try {
 
             setError("");
-
 
             const formData =
                 new FormData();
@@ -473,18 +652,15 @@ function AnnouncementPortal({
                 userId
             );
 
-
             formData.append(
                 "title",
                 title
             );
 
-
             formData.append(
                 "content",
                 content
             );
-
 
             formData.append(
                 "targetAudience",
@@ -493,14 +669,7 @@ function AnnouncementPortal({
 
 
             /*
-             * Selected users.
-             *
-             * IMPORTANT:
-             * These are actual userIds:
-             *
-             * ["user-14"]
-             *
-             * not display names.
+             * Selected users
              */
 
             if (
@@ -566,7 +735,6 @@ function AnnouncementPortal({
                 ]
             );
 
-
             setIsCreateAnnouncementOpen(
                 false
             );
@@ -578,24 +746,20 @@ function AnnouncementPortal({
                 error
             );
 
-
             console.error(
                 "Status:",
                 error?.response?.status
             );
-
 
             console.error(
                 "Backend response:",
                 error?.response?.data
             );
 
-
             setError(
                 error?.response?.data?.message ||
                 "Failed to create announcement"
             );
-
 
             throw error;
         }
@@ -616,18 +780,15 @@ function AnnouncementPortal({
             return;
         }
 
-
         try {
 
             setError("");
-
 
             await deleteAnnouncement(
                 selectedPortal._id,
                 announcementId,
                 userId
             );
-
 
             setAnnouncements(
                 (prev) =>
@@ -645,11 +806,177 @@ function AnnouncementPortal({
                 error
             );
 
-
             setError(
                 error?.response?.data?.message ||
                 "Failed to delete announcement"
             );
+        }
+    };
+
+    /*
+    * --------------------------------------------------
+    * Add portal members
+    * --------------------------------------------------
+    */
+
+    const handleAddPortalMembers = async () => {
+
+        if (
+            !selectedPortal ||
+            selectedNewMembers.length === 0
+        ) {
+            return;
+        }
+
+        if (selectedPortal.role !== "host") {
+            return;
+        }
+
+        try {
+
+            setAddingMembers(true);
+            setError("");
+
+            const membersToAdd =
+                selectedNewMembers.map((userId) => ({
+                    userId,
+                    role: "participant",
+                }));
+
+            await addPortalMembers(
+                selectedPortal._id,
+                membersToAdd,
+                userId
+            );
+
+            const members =
+                await getAnnouncementPortalMembers(
+                    selectedPortal._id,
+                    userId
+                );
+
+            setPortalMembers(members);
+
+            await loadPortals();
+
+            setSelectedNewMembers([]);
+            setShowAddMember(false);
+
+        } catch (error) {
+
+            console.error(
+                "Add portal members error:",
+                error.response?.data || error
+            );
+
+            setError(
+                error.response?.data?.message ||
+                "Failed to add members"
+            );
+
+        } finally {
+
+            setAddingMembers(false);
+
+        }
+    };
+
+
+
+    /*
+     * --------------------------------------------------
+     * Remove portal member
+     * --------------------------------------------------
+     */
+
+    const handleRemovePortalMember = async (
+        member
+    ) => {
+
+        if (!selectedPortal) {
+            return;
+        }
+
+
+        /*
+         * Only host can remove members.
+         */
+
+        if (selectedPortal.role !== "host") {
+            return;
+        }
+
+
+        /*
+         * Host cannot remove themselves.
+         */
+
+        if (
+            member.userId ===
+            selectedPortal.createdBy
+        ) {
+            return;
+        }
+
+
+        const confirmed =
+            window.confirm(
+                `Are you sure you want to remove ${member.userId} from this portal?`
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            setError("");
+
+
+            await removePortalMember(
+                selectedPortal._id,
+                member.userId,
+                userId
+            );
+
+
+            /*
+             * Immediately update member list.
+             */
+
+            setPortalMembers(
+                (prev) =>
+                    prev.filter(
+                        (existingMember) =>
+                            existingMember.userId !==
+                            member.userId
+                    )
+            );
+
+
+            /*
+             * Refresh portals so that
+             * access state stays accurate.
+             */
+
+            await loadPortals();
+
+
+        } catch (error) {
+
+            console.error(
+                "Failed to remove portal member:",
+                error
+            );
+
+
+            setError(
+                error?.response?.data?.message ||
+                "Failed to remove portal member"
+            );
+
         }
     };
 
@@ -886,6 +1213,333 @@ function AnnouncementPortal({
                 <div className="announcement-content">
 
 
+                    {/* =================================
+                        Members
+                    ================================= */}
+
+                    <div className="announcement-portal-members">
+
+                        <button
+                            type="button"
+                            className="announcement-portal-members-toggle"
+                            onClick={() =>
+                                setShowMembers(
+                                    (prev) => !prev
+                                )
+                            }
+                        >
+
+                        <div className="announcement-portal-members-title">
+
+                            <h3>
+                                Members
+                            </h3>
+
+                            <span className="announcement-portal-member-count">
+                                {portalMembers.length}
+                            </span>
+
+                        </div>
+
+                        {selectedPortal.role === "host" && (
+
+                            <button
+                                type="button"
+                                className="announcement-add-member-button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setShowAddMember(true);
+                                }}
+                            >
+                                + Add Member
+                            </button>
+
+                        )}
+
+
+                            <span
+                                className={`announcement-portal-members-arrow ${
+                                    showMembers
+                                        ? "open"
+                                        : ""
+                                }`}
+                            >
+                                ▾
+                            </span>
+
+                        </button>
+                        {showAddMember && (
+
+                            <div className="announcement-add-member-overlay">
+
+                                <div className="announcement-add-member-modal">
+
+                                    <div className="announcement-add-member-header">
+
+                                        <div>
+                                            <h3>
+                                                Add Members
+                                            </h3>
+
+                                            <p>
+                                                Select users to add to this portal.
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAddMember(false);
+                                                setSelectedNewMembers([]);
+                                            }}
+                                        >
+                                            ×
+                                        </button>
+
+                                    </div>
+
+
+                                    <div className="announcement-add-member-list">
+
+                                        {availablePortalMembers.length === 0 ? (
+
+                                            <p className="announcement-add-member-empty">
+                                                No users available to add.
+                                            </p>
+
+                                        ) : (
+
+                                            availablePortalMembers.map(
+                                                (user) => {
+
+                                                    const isSelected =
+                                                        selectedNewMembers.includes(
+                                                            user.userId
+                                                        );
+
+                                                    return (
+
+                                                        <label
+                                                            key={user.userId}
+                                                            className={`announcement-add-member-item ${
+                                                                isSelected
+                                                                    ? "selected"
+                                                                    : ""
+                                                            }`}
+                                                        >
+
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => {
+
+                                                                    setSelectedNewMembers(
+                                                                        (prev) =>
+                                                                            isSelected
+                                                                                ? prev.filter(
+                                                                                    (id) =>
+                                                                                        id !==
+                                                                                        user.userId
+                                                                                )
+                                                                                : [
+                                                                                    ...prev,
+                                                                                    user.userId,
+                                                                                ]
+                                                                    );
+
+                                                                }}
+                                                            />
+
+                                                            <span>
+                                                                {user.userId}
+                                                            </span>
+
+                                                        </label>
+
+                                                    );
+
+                                                }
+                                            )
+
+                                        )}
+
+                                    </div>
+
+
+                                    <div className="announcement-add-member-actions">
+
+                                        <button
+                                            type="button"
+                                            className="announcement-add-member-cancel"
+                                            onClick={() => {
+                                                setShowAddMember(false);
+                                                setSelectedNewMembers([]);
+                                            }}
+                                            disabled={addingMembers}
+                                        >
+                                            Cancel
+                                        </button>
+
+
+                                        <button
+                                            type="button"
+                                            className="announcement-add-member-confirm"
+                                            onClick={handleAddPortalMembers}
+                                            disabled={
+                                                addingMembers ||
+                                                selectedNewMembers.length === 0
+                                            }
+                                        >
+                                            {addingMembers
+                                                ? "Adding..."
+                                                : `Add ${
+                                                    selectedNewMembers.length
+                                                } Member${
+                                                    selectedNewMembers.length !== 1
+                                                        ? "s"
+                                                        : ""
+                                                }`
+                                            }
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        )}                  
+
+
+                        {showMembers && (
+
+                            <div className="announcement-portal-member-list">
+
+
+                                {membersLoading ? (
+
+                                    <p>
+                                        Loading members...
+                                    </p>
+
+                                ) : portalMembers.length === 0 ? (
+
+                                    <p>
+                                        No members found.
+                                    </p>
+
+                                ) : (
+
+                                    portalMembers.map(
+                                        (member) => {
+
+                                            const isHost =
+                                                member.userId ===
+                                                selectedPortal.createdBy;
+
+
+                                            const canRemove =
+                                                selectedPortal.role ===
+                                                    "host" &&
+                                                !isHost;
+
+
+                                            return (
+
+                                                <div
+                                                    key={
+                                                        member._id
+                                                    }
+                                                    className="announcement-portal-member"
+                                                >
+
+
+                                                    <div className="announcement-member-info">
+
+                                                        <strong>
+                                                            {
+                                                                member.userId
+                                                            }
+                                                        </strong>
+
+                                                    </div>
+
+
+                                                    <div className="announcement-member-actions">
+
+                                                        {selectedPortal?.role === "host" &&
+                                                            member.userId !== selectedPortal.createdBy &&
+                                                            member.userId !== userId ? (
+
+                                                                <select
+                                                                    className="announcement-member-role-select"
+                                                                    value={member.role}
+                                                                    onChange={(e) =>
+                                                                        handleRoleChange(
+                                                                            member.userId,
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <option value="participant">
+                                                                        Participant
+                                                                    </option>
+
+                                                                    <option value="host">
+                                                                        Host
+                                                                    </option>
+                                                                </select>
+
+                                                            ) : (
+
+                                                                <span
+                                                                    className={`announcement-member-role ${member.role}`}
+                                                                >
+                                                                    {member.role}
+                                                                </span>
+
+                                                            )}
+
+
+                                                        {canRemove && (
+
+                                                            <button
+                                                                type="button"
+                                                                className="announcement-member-remove"
+                                                                onClick={() =>
+                                                                    handleRemovePortalMember(
+                                                                        member
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </button>
+
+                                                        )}
+
+                                                    </div>
+
+
+                                                </div>
+
+                                            );
+
+                                        }
+                                    )
+
+                                )}
+
+                            </div>
+
+                        )}
+
+                    </div>
+
+
+                    {/* =================================
+                        Selected portal header
+                    ================================= */}
+
                     <div className="announcement-content-header">
 
                         <div>
@@ -939,11 +1593,25 @@ function AnnouncementPortal({
                             >
                                 + Announcement
                             </button>
+                            
 
+                        )}
+                        {selectedPortal?.role === "host"  && (
+                            <button
+                                type="button"
+                                className="announcement-delete-portal-button"
+                                onClick={handleDeletePortal}
+                            >
+                                Delete Portal
+                            </button>
                         )}
 
                     </div>
 
+
+                    {/* =================================
+                        Announcements
+                    ================================= */}
 
                     <AnnouncementList
                         announcements={

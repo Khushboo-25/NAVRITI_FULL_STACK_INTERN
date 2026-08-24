@@ -15,6 +15,13 @@ const socketHandler = (io) => {
                 `User ${userId} joined personal room`
             );
         });
+
+
+        
+
+
+
+
         // Handle joining a existing conversation
         socket.on("joinConversation", (conversationId) => {
             socket.join(conversationId);

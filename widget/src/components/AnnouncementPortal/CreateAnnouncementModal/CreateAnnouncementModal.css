@@ -13,9 +13,8 @@
 
     padding: 20px;
 
-    background: rgba(17, 24, 39, 0.38);
-
-    backdrop-filter: blur(2px);
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(5px);
 }
 
 
@@ -30,27 +29,51 @@
 
     overflow-y: auto;
 
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
 
     background: #ffffff;
 
     box-shadow:
-        0 18px 45px rgba(0, 0, 0, 0.16);
+        0 24px 60px rgba(15, 23, 42, 0.18),
+        0 4px 12px rgba(15, 23, 42, 0.06);
 
-    animation: announcement-modal-enter 0.16s ease-out;
+    animation: announcement-modal-enter 0.18s ease-out;
 }
 
 @keyframes announcement-modal-enter {
+
     from {
         opacity: 0;
-        transform: translateY(6px) scale(0.99);
+        transform: translateY(8px) scale(0.985);
     }
 
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+}
+
+
+/* =========================================================
+   Modal Scrollbar
+   ========================================================= */
+
+.announcement-modal::-webkit-scrollbar {
+    width: 6px;
+}
+
+.announcement-modal::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-modal::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.announcement-modal::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 
@@ -63,37 +86,50 @@
     align-items: center;
     justify-content: space-between;
 
-    padding: 15px 18px;
+    gap: 14px;
 
-    border-bottom: 1px solid #e5e7eb;
+    padding: 17px 19px;
+
+    background: #ffffff;
+
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .announcement-modal-header h3 {
     margin: 0;
 
-    color: #111827;
+    color: #0f172a;
 
-    font-size: 16px;
-    font-weight: 650;
-    line-height: 1.4;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.35;
+
+    letter-spacing: -0.01em;
 }
+
+
+/* =========================================================
+   Close Button
+   ========================================================= */
 
 .announcement-modal-header button {
     display: flex;
     align-items: center;
     justify-content: center;
 
-    width: 28px;
-    height: 28px;
+    flex-shrink: 0;
+
+    width: 32px;
+    height: 32px;
 
     padding: 0;
 
-    border: none;
-    border-radius: 6px;
+    border: 1px solid transparent;
+    border-radius: 8px;
 
     background: transparent;
 
-    color: #9ca3af;
+    color: #64748b;
 
     font-size: 21px;
     line-height: 1;
@@ -102,12 +138,25 @@
 
     transition:
         background 0.15s ease,
-        color 0.15s ease;
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease;
 }
 
 .announcement-modal-header button:hover:not(:disabled) {
-    background: #f3f4f6;
-    color: #4b5563;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+
+    color: #0f172a;
+}
+
+.announcement-modal-header button:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.announcement-modal-header button:focus-visible {
+    outline: 2px solid #94a3b8;
+    outline-offset: 2px;
 }
 
 .announcement-modal-header button:disabled {
@@ -124,9 +173,11 @@
     display: flex;
     flex-direction: column;
 
-    gap: 15px;
+    gap: 16px;
 
-    padding: 18px;
+    padding: 19px;
+
+    background: #ffffff;
 }
 
 
@@ -138,12 +189,12 @@
     display: flex;
     flex-direction: column;
 
-    gap: 6px;
+    gap: 7px;
 
-    color: #4b5563;
+    color: #334155;
 
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 650;
 }
 
 
@@ -155,53 +206,217 @@
 .announcement-form textarea,
 .announcement-form select {
     width: 100%;
+
     box-sizing: border-box;
 
-    padding: 9px 10px;
+    padding: 9px 11px;
 
-    border: 1px solid #dfe3e8;
-    border-radius: 7px;
+    border: 1px solid #dbe2ea;
+    border-radius: 9px;
 
     outline: none;
 
     background: #ffffff;
 
-    color: #1f2937;
+    color: #1e293b;
 
     font-family: inherit;
     font-size: 13px;
 
     transition:
-        border-color 0.15s ease,
-        box-shadow 0.15s ease;
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        background 0.16s ease;
 }
 
-.announcement-form input[type="text"]::placeholder,
-.announcement-form textarea::placeholder {
-    color: #b0b5bd;
+
+/* Text input */
+
+.announcement-form input[type="text"] {
+    height: 39px;
 }
 
-.announcement-form input[type="text"]:hover,
-.announcement-form textarea:hover,
-.announcement-form select:hover {
-    border-color: #cbd0d6;
-}
 
-.announcement-form input[type="text"]:focus,
-.announcement-form textarea:focus,
-.announcement-form select:focus {
-    border-color: #9ca3af;
-
-    box-shadow:
-        0 0 0 2px rgba(156, 163, 175, 0.12);
-}
+/* Textarea */
 
 .announcement-form textarea {
     min-height: 120px;
 
     resize: vertical;
 
-    line-height: 1.5;
+    line-height: 1.55;
+}
+
+
+/* Placeholder */
+
+.announcement-form input[type="text"]::placeholder,
+.announcement-form textarea::placeholder {
+    color: #94a3b8;
+}
+
+
+/* Hover */
+
+.announcement-form input[type="text"]:hover,
+.announcement-form textarea:hover,
+.announcement-form select:hover {
+    border-color: #cbd5e1;
+}
+
+
+/* Focus */
+
+.announcement-form input[type="text"]:focus,
+.announcement-form textarea:focus,
+.announcement-form select:focus {
+    border-color: #64748b;
+
+    box-shadow:
+        0 0 0 3px rgba(100, 116, 139, 0.10);
+}
+
+
+/* =========================================================
+   Audience Select
+   ========================================================= */
+
+.announcement-form select {
+    height: 39px;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   Selected Users
+   ========================================================= */
+
+.announcement-selected-users {
+    display: flex;
+    flex-direction: column;
+
+    gap: 9px;
+
+    padding: 12px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+
+    background: #f8fafc;
+}
+
+.announcement-selected-users-title {
+    color: #334155;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.announcement-selected-users-empty {
+    padding: 14px;
+
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    color: #94a3b8;
+
+    font-size: 11px;
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   User List
+   ========================================================= */
+
+.announcement-user-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+
+    max-height: 180px;
+
+    overflow-y: auto;
+}
+
+.announcement-user-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.announcement-user-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-user-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+
+/* =========================================================
+   User Option
+   ========================================================= */
+
+.announcement-user-option {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+
+    gap: 9px !important;
+
+    padding: 9px 10px;
+
+    border: 1px solid transparent;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    color: #334155;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.announcement-user-option:hover {
+    background: #f1f5f9;
+
+    border-color: #e2e8f0;
+}
+
+
+/* Checkbox */
+
+.announcement-user-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+
+    margin: 0;
+
+    accent-color: #0f172a;
+
+    cursor: pointer;
+}
+
+
+/* User name */
+
+.announcement-user-option span {
+    overflow: hidden;
+
+    color: #334155;
+
+    font-size: 12px;
+    font-weight: 550;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 
@@ -211,26 +426,31 @@
 
 .announcement-form input[type="file"] {
     width: 100%;
+
     box-sizing: border-box;
 
-    padding: 8px;
+    padding: 9px;
 
-    border: 1px dashed #d1d5db;
-    border-radius: 7px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 9px;
 
-    background: #fafafa;
+    background: #f8fafc;
 
-    color: #6b7280;
+    color: #64748b;
 
     font-family: inherit;
     font-size: 11px;
 
     cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
 }
 
 .announcement-form input[type="file"]:hover {
-    border-color: #b8bdc5;
-    background: #f7f7f7;
+    border-color: #94a3b8;
+    background: #f1f5f9;
 }
 
 
@@ -239,38 +459,17 @@
    ========================================================= */
 
 .announcement-form-error {
-    padding: 9px 10px;
+    padding: 10px 11px;
 
     border: 1px solid #fecaca;
-    border-radius: 7px;
+    border-radius: 9px;
 
-    background: #fef2f2;
+    background: #fff7f7;
 
     color: #b91c1c;
 
     font-size: 11px;
-    line-height: 1.4;
-}
-
-
-/* =========================================================
-   Selected Users
-   ========================================================= */
-
-.announcement-selected-users-note {
-    margin-top: -6px;
-
-    padding: 9px 10px;
-
-    border: 1px solid #e5e7eb;
-    border-radius: 7px;
-
-    background: #f9fafb;
-
-    color: #6b7280;
-
-    font-size: 11px;
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
 
@@ -285,12 +484,13 @@
     gap: 5px;
 
     margin-top: -5px;
+
     padding: 8px;
 
-    border: 1px solid #e5e7eb;
-    border-radius: 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
 
-    background: #fafafa;
+    background: #f8fafc;
 }
 
 .announcement-selected-files > div {
@@ -299,17 +499,26 @@
 
     min-width: 0;
 
-    padding: 5px 6px;
+    padding: 7px 8px;
 
-    border-radius: 5px;
+    border-radius: 7px;
 
-    color: #4b5563;
+    background: #ffffff;
+
+    color: #475569;
 
     font-size: 11px;
 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    transition:
+        background 0.15s ease;
+}
+
+.announcement-selected-files > div:hover {
+    background: #f1f5f9;
 }
 
 
@@ -322,71 +531,114 @@
     align-items: center;
     justify-content: flex-end;
 
-    gap: 8px;
+    gap: 9px;
 
-    padding-top: 3px;
+    padding-top: 13px;
 
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #e2e8f0;
 }
 
 
-/* All buttons */
+/* =========================================================
+   Buttons
+   ========================================================= */
 
 .announcement-form-actions button {
-    padding: 8px 14px;
+    min-height: 36px;
 
-    border-radius: 7px;
+    padding: 0 14px;
+
+    border-radius: 8px;
 
     font-family: inherit;
+
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 650;
 
     cursor: pointer;
 
     transition:
-        background 0.15s ease,
-        border-color 0.15s ease,
-        opacity 0.15s ease;
+        background 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.12s ease;
 }
 
 
-/* Cancel */
+/* =========================================================
+   Cancel
+   ========================================================= */
 
 .announcement-form-actions button[type="button"] {
-    border: 1px solid #e0e3e7;
+    border: 1px solid #dbe2ea;
 
     background: #ffffff;
 
-    color: #4b5563;
+    color: #475569;
 }
 
 .announcement-form-actions button[type="button"]:hover:not(:disabled) {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+
+    color: #1e293b;
+}
+
+.announcement-form-actions button[type="button"]:active:not(:disabled) {
+    transform: scale(0.97);
 }
 
 
-/* Publish */
+/* =========================================================
+   Publish
+   ========================================================= */
 
 .announcement-form-actions button[type="submit"] {
-    border: 1px solid #1f2937;
+    border: 1px solid #0f172a;
 
-    background: #1f2937;
+    background: #0f172a;
 
     color: #ffffff;
+
+    box-shadow:
+        0 2px 5px rgba(15, 23, 42, 0.12);
 }
 
 .announcement-form-actions button[type="submit"]:hover:not(:disabled) {
-    background: #111827;
-    border-color: #111827;
+    background: #1e293b;
+    border-color: #1e293b;
+
+    box-shadow:
+        0 4px 10px rgba(15, 23, 42, 0.16);
+
+    transform: translateY(-1px);
+}
+
+.announcement-form-actions button[type="submit"]:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
 }
 
 
-/* Disabled */
+/* =========================================================
+   Focus
+   ========================================================= */
+
+.announcement-form-actions button:focus-visible {
+    outline: 2px solid #94a3b8;
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   Disabled
+   ========================================================= */
 
 .announcement-form-actions button:disabled {
     cursor: not-allowed;
     opacity: 0.55;
+
+    transform: none;
 }
 
 
@@ -395,20 +647,33 @@
    ========================================================= */
 
 @media (max-width: 600px) {
+
     .announcement-modal-overlay {
         align-items: flex-end;
 
-        padding: 0;
+        padding: 10px;
     }
 
     .announcement-modal {
         max-width: none;
         max-height: 92vh;
 
-        border-radius: 12px 12px 0 0;
+        border-radius: 14px;
+    }
+
+    .announcement-modal-header {
+        padding: 16px;
     }
 
     .announcement-form {
         padding: 16px;
+    }
+
+    .announcement-user-list {
+        max-height: 160px;
+    }
+
+    .announcement-form-actions {
+        padding-top: 12px;
     }
 }

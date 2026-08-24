@@ -187,3 +187,105 @@ export const deleteAnnouncement = async (
 
     return response.data;
 };
+
+export const getAnnouncementPortalMembers = async (
+    portalId,
+    userId
+) => {
+
+    const api = getApi();
+
+    const response = await api.get(
+        `/announcement-portals/${portalId}/members`,
+        {
+            params: {
+                userId,
+            },
+        }
+    );
+
+    return response.data.members || [];
+};
+
+/* 
+ * ---------------------------------------------------------
+ * Add members to announcement portal
+ * ---------------------------------------------------------
+ */
+
+export const addPortalMembers = async (
+    portalId,
+    members,
+    hostUserId
+) => {
+
+    const api = getApi();
+
+    const response = await api.post(
+        `/announcement-portals/${portalId}/members`,
+        {
+            members,
+            hostUserId,
+        }
+    );
+
+    return response.data;
+};
+
+export const removePortalMember = async (
+    portalId,
+    userId,
+    hostUserId
+) => {
+    const api = getApi();
+
+    const response = await api.delete(
+        `/announcement-portals/${portalId}/members/${userId}`,
+        {
+            data: {
+                hostUserId,
+            },
+        }
+    );
+
+    return response.data;
+};
+
+
+export const updatePortalMemberRole = async (
+    portalId,
+    userId,
+    hostUserId,
+    role
+) => {
+
+    const api = getApi();
+
+    const response = await api.patch(
+        `/announcement-portals/${portalId}/members/${userId}/role`,
+        {
+            hostUserId,
+            role,
+        }
+    );
+
+    return response.data;
+};
+export const deleteAnnouncementPortal = async (
+    portalId,
+    userId
+) => {
+
+    const api = getApi();
+
+    const response = await api.delete(
+        `/announcement-portals/${portalId}`,
+        {
+            data: {
+                userId,
+            },
+        }
+    );
+
+    return response.data;
+};

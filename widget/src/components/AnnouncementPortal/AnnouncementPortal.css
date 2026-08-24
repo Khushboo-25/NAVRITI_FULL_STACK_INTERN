@@ -5,6 +5,7 @@
 .announcement-portal {
     display: flex;
     flex-direction: column;
+
     width: 100%;
     height: 100%;
     min-height: 0;
@@ -23,12 +24,13 @@
 .announcement-header {
     display: flex;
     align-items: center;
-    gap: 12px;
 
-    padding: 16px 18px;
+    gap: 10px;
+
+    padding: 9px 14px;
 
     background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e2e8f0;
 
     flex-shrink: 0;
 }
@@ -41,18 +43,18 @@
     align-items: center;
     justify-content: center;
 
-    width: 34px;
-    height: 34px;
+    width: 31px;
+    height: 31px;
 
     padding: 0;
 
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
 
     background: #ffffff;
-    color: #374151;
+    color: #475569;
 
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
 
     cursor: pointer;
@@ -64,8 +66,8 @@
 }
 
 .announcement-back-button:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .announcement-back-button:active {
@@ -82,20 +84,21 @@
 .announcement-header h2 {
     margin: 0;
 
-    font-size: 18px;
-    font-weight: 650;
-    line-height: 1.3;
+    color: #0f172a;
 
-    color: #111827;
+    font-size: 16px;
+    font-weight: 700;
+
+    line-height: 1.2;
 }
 
 .announcement-header p {
-    margin: 3px 0 0;
+    margin: 2px 0 0;
 
-    font-size: 12px;
-    line-height: 1.4;
+    color: #94a3b8;
 
-    color: #6b7280;
+    font-size: 10px;
+    line-height: 1.3;
 }
 
 
@@ -104,31 +107,37 @@
    ========================================================= */
 
 .announcement-portals {
-    padding: 12px 16px;
+    padding: 9px 14px;
 
     background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e2e8f0;
 
     flex-shrink: 0;
 }
 
-.announcement-portal-label {
-    margin-bottom: 8px;
 
-    font-size: 10px;
+/* Label */
+
+.announcement-portal-label {
+    margin-bottom: 6px;
+
+    color: #94a3b8;
+
+    font-size: 9px;
     font-weight: 700;
 
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-
-    color: #9ca3af;
 }
+
+
+/* Portal list */
 
 .announcement-portal-list {
     display: flex;
     align-items: stretch;
 
-    gap: 8px;
+    gap: 7px;
 
     overflow-x: auto;
 
@@ -148,13 +157,13 @@
     align-items: flex-start;
     justify-content: center;
 
-    min-width: 115px;
-    max-width: 180px;
+    min-width: 110px;
+    max-width: 170px;
 
-    padding: 9px 12px;
+    padding: 7px 10px;
 
-    border: 1px solid #e5e7eb;
-    border-radius: 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
 
     background: #ffffff;
 
@@ -169,16 +178,16 @@
 }
 
 .announcement-portal-item:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .announcement-portal-item.active {
-    background: #f3f4f6;
-    border-color: #9ca3af;
+    background: #f1f5f9;
+    border-color: #94a3b8;
 
     box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.04);
+        0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .announcement-portal-item span {
@@ -188,19 +197,19 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font-size: 12px;
-    font-weight: 650;
+    color: #334155;
 
-    color: #1f2937;
+    font-size: 11px;
+    font-weight: 650;
 }
 
 .announcement-portal-item small {
-    margin-top: 3px;
+    margin-top: 2px;
 
-    font-size: 10px;
+    color: #94a3b8;
+
+    font-size: 9px;
     font-weight: 500;
-
-    color: #9ca3af;
 
     text-transform: capitalize;
 }
@@ -211,17 +220,17 @@
    ========================================================= */
 
 .announcement-error {
-    margin: 10px 16px;
+    margin: 8px 14px;
 
-    padding: 10px 12px;
+    padding: 8px 10px;
 
     border: 1px solid #fecaca;
-    border-radius: 8px;
+    border-radius: 7px;
 
     background: #fef2f2;
     color: #b91c1c;
 
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
 
     flex-shrink: 0;
@@ -254,12 +263,12 @@
     align-items: center;
     justify-content: space-between;
 
-    gap: 16px;
+    gap: 12px;
 
-    padding: 15px 18px;
+    padding: 11px 16px;
 
     background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e2e8f0;
 
     flex-shrink: 0;
 }
@@ -275,28 +284,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font-size: 16px;
-    font-weight: 650;
+    color: #0f172a;
 
-    color: #111827;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .announcement-content-header p {
-    margin: 4px 0 0;
+    margin: 2px 0 0;
 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font-size: 11px;
-    line-height: 1.5;
+    color: #94a3b8;
 
-    color: #6b7280;
+    font-size: 10px;
+    line-height: 1.4;
 }
 
 
 /* =========================================================
-   + Announcement Button
+   Create Announcement Button
    ========================================================= */
 
 .announcement-create-button {
@@ -306,17 +315,17 @@
 
     flex-shrink: 0;
 
-    min-height: 34px;
+    min-height: 31px;
 
-    padding: 7px 12px;
+    padding: 6px 11px;
 
-    border: 1px solid #d1d5db;
+    border: 1px solid #1e293b;
     border-radius: 7px;
 
-    background: #111827;
+    background: #1e293b;
     color: #ffffff;
 
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 
     white-space: nowrap;
@@ -331,11 +340,11 @@
 }
 
 .announcement-create-button:hover {
-    background: #374151;
-    border-color: #374151;
+    background: #334155;
+    border-color: #334155;
 
     box-shadow:
-        0 2px 6px rgba(0, 0, 0, 0.12);
+        0 2px 6px rgba(15, 23, 42, 0.12);
 }
 
 .announcement-create-button:active {
@@ -343,7 +352,7 @@
 }
 
 .announcement-create-button:focus-visible {
-    outline: 2px solid #9ca3af;
+    outline: 2px solid #94a3b8;
     outline-offset: 2px;
 }
 
@@ -363,9 +372,9 @@
     display: flex;
     flex-direction: column;
 
-    gap: 10px;
+    gap: 11px;
 
-    padding: 14px 16px 20px;
+    padding: 13px 16px 20px;
 
     background: #f7f8fa;
 }
@@ -382,8 +391,12 @@
 }
 
 .announcement-list::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: #cbd5e1;
     border-radius: 10px;
+}
+
+.announcement-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 
@@ -394,26 +407,30 @@
 .announcement-card {
     position: relative;
 
-    padding: 14px 15px;
+    padding: 16px 17px;
 
     background: #ffffff;
 
-    border: 1px solid #e5e7eb;
-    border-radius: 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
 
     box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.025);
+        0 1px 3px rgba(15, 23, 42, 0.035);
+
     transition:
         background 0.15s ease,
         border-color 0.15s ease,
-        box-shadow 0.15s ease;
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
 }
 
 .announcement-card:hover {
-    border-color: #d1d5db;
+    border-color: #cbd5e1;
 
     box-shadow:
-        0 3px 10px rgba(0, 0, 0, 0.05);
+        0 5px 14px rgba(15, 23, 42, 0.06);
+
+    transform: translateY(-1px);
 }
 
 
@@ -428,7 +445,7 @@
 
     gap: 12px;
 
-    margin-bottom: 7px;
+    margin-bottom: 9px;
 }
 
 .announcement-card-header h3 {
@@ -436,20 +453,21 @@
 
     margin: 0;
 
-    font-size: 14px;
-    font-weight: 650;
-    line-height: 1.4;
+    color: #0f172a;
 
-    color: #111827;
+    font-size: 15px;
+    font-weight: 700;
+
+    line-height: 1.4;
 }
 
 .announcement-card-header span {
     flex-shrink: 0;
 
+    color: #94a3b8;
+
     font-size: 10px;
     line-height: 1.5;
-
-    color: #9ca3af;
 }
 
 
@@ -460,10 +478,10 @@
 .announcement-card-content {
     margin: 0;
 
-    color: #4b5563;
+    color: #334155;
 
-    font-size: 12.5px;
-    line-height: 1.6;
+    font-size: 13.5px;
+    line-height: 1.7;
 
     white-space: pre-wrap;
     word-break: break-word;
@@ -487,7 +505,7 @@
 
     text-align: center;
 
-    color: #6b7280;
+    color: #64748b;
 }
 
 .announcement-empty-icon {
@@ -495,29 +513,29 @@
     align-items: center;
     justify-content: center;
 
-    width: 52px;
-    height: 52px;
+    width: 50px;
+    height: 50px;
 
-    margin-bottom: 13px;
+    margin-bottom: 12px;
 
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     border-radius: 50%;
 
     background: #ffffff;
 
-    font-size: 23px;
+    font-size: 22px;
 
     box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.03);
+        0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
 .announcement-empty h3 {
     margin: 0;
 
-    font-size: 14px;
-    font-weight: 600;
+    color: #334155;
 
-    color: #374151;
+    font-size: 14px;
+    font-weight: 650;
 }
 
 .announcement-empty p {
@@ -525,10 +543,10 @@
 
     margin: 6px 0 0;
 
+    color: #94a3b8;
+
     font-size: 11px;
     line-height: 1.5;
-
-    color: #9ca3af;
 }
 
 
@@ -546,9 +564,178 @@
 
     padding: 30px;
 
-    font-size: 12px;
+    color: #64748b;
 
-    color: #6b7280;
+    font-size: 11px;
+}
+
+
+/* =========================================================
+   Portal Members
+   ========================================================= */
+
+.announcement-portal-members {
+    width: 100%;
+
+    margin-bottom: 14px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    overflow: hidden;
+
+    box-sizing: border-box;
+}
+
+
+/* Toggle */
+
+.announcement-portal-members-toggle {
+    width: 100% !important;
+    min-width: 100% !important;
+
+    height: auto !important;
+
+    margin: 0 !important;
+    padding: 10px 13px !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+
+    background: transparent !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+
+    align-items: center !important;
+    justify-content: space-between !important;
+
+    cursor: pointer;
+
+    text-align: left;
+
+    box-sizing: border-box;
+
+    transition: background 0.15s ease;
+}
+
+.announcement-portal-members-toggle:hover {
+    background: #f8fafc !important;
+}
+
+
+/* Title */
+
+.announcement-portal-members-title {
+    display: flex !important;
+    flex-direction: row !important;
+
+    align-items: center !important;
+
+    gap: 8px;
+}
+
+.announcement-portal-members-title h3 {
+    margin: 0;
+
+    color: #334155;
+
+    font-size: 13px;
+    font-weight: 650;
+}
+
+
+/* Member count */
+
+.announcement-portal-member-count {
+    min-width: 22px;
+    width: 22px;
+    height: 22px;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    border-radius: 50%;
+
+    background: #f1f5f9;
+    color: #475569;
+
+    font-size: 10px;
+    font-weight: 650;
+}
+
+
+/* Arrow */
+
+.announcement-portal-members-arrow {
+    display: inline-flex !important;
+
+    align-items: center;
+    justify-content: center;
+
+    color: #94a3b8;
+
+    font-size: 14px;
+
+    transition: transform 0.2s ease;
+}
+
+.announcement-portal-members-arrow.open {
+    transform: rotate(180deg);
+}
+
+
+/* Member list */
+
+.announcement-portal-member-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
+
+    padding: 0 13px 13px;
+}
+
+
+/* Member */
+
+.announcement-portal-member {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 8px 10px;
+
+    border: 1px solid #f1f5f9;
+    border-radius: 7px;
+
+    background: #f8fafc;
+}
+
+
+/* Role */
+
+.announcement-member-role {
+    padding: 3px 7px;
+
+    border-radius: 5px;
+
+    background: #ffffff;
+    color: #64748b;
+
+    font-size: 9px;
+    font-weight: 600;
+
+    text-transform: capitalize;
 }
 
 
@@ -559,76 +746,720 @@
 @media (max-width: 768px) {
 
     .announcement-header {
-        padding: 14px 14px;
+        padding: 8px 12px;
     }
 
     .announcement-header h2 {
-        font-size: 17px;
-    }
-
-    .announcement-header p {
-        font-size: 11px;
-    }
-
-    .announcement-portals {
-        padding: 10px 12px;
-    }
-
-    .announcement-portal-item {
-        min-width: 105px;
-        padding: 8px 10px;
-    }
-
-    .announcement-content-header {
-        align-items: flex-start;
-
-        padding: 13px 14px;
-    }
-
-    .announcement-content-header h3 {
         font-size: 15px;
     }
 
-    .announcement-content-header p {
-        max-width: 180px;
+    .announcement-header p {
+        font-size: 9px;
+    }
+
+    .announcement-portals {
+        padding: 8px 11px;
+    }
+
+    .announcement-portal-item {
+        min-width: 100px;
+
+        padding: 7px 9px;
+    }
+
+    .announcement-content-header {
+        padding: 10px 13px;
+    }
+
+    .announcement-content-header h3 {
+        font-size: 14px;
     }
 
     .announcement-create-button {
-        min-height: 32px;
-        padding: 6px 10px;
+        min-height: 30px;
 
-        font-size: 11px;
+        padding: 5px 9px;
+
+        font-size: 10px;
     }
 
     .announcement-list {
-        padding: 12px;
+        padding: 11px 12px 16px;
+
+        gap: 9px;
+    }
+
+    .announcement-card {
+        padding: 14px;
+    }
+
+    .announcement-card-header h3 {
+        font-size: 14px;
+    }
+
+    .announcement-card-content {
+        font-size: 13px;
+    }
+}
+
+
+/* =========================================================
+   Small Mobile
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+    .announcement-header {
+        padding: 8px 10px;
+    }
+
+    .announcement-back-button {
+        width: 29px;
+        height: 29px;
+
+        font-size: 15px;
+    }
+
+    .announcement-header h2 {
+        font-size: 14px;
+    }
+
+    .announcement-content-header {
+        gap: 8px;
+
+        padding: 9px 11px;
+    }
+
+    .announcement-content-header p {
+        max-width: 150px;
+    }
+
+    .announcement-create-button {
+        padding: 5px 8px;
+    }
+
+    .announcement-list {
+        padding: 9px 10px 14px;
     }
 
     .announcement-card {
         padding: 13px;
     }
 
-    .announcement-card-header h3 {
-        font-size: 13px;
+    .announcement-card-content {
+        font-size: 12.5px;
+        line-height: 1.65;
+    }
+}
+.announcement-member-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.announcement-member-remove {
+    padding: 4px 8px;
+
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+
+    background: #ffffff;
+    color: #dc2626;
+
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.announcement-member-remove:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.announcement-member-remove:active {
+    background: #fee2e2;
+}
+
+
+
+/* =========================================================
+   Add Member
+   ========================================================= */
+
+.announcement-add-member-button {
+    margin-left: auto;
+    padding: 7px 11px;
+
+    border: 1px solid #dbe1e8;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #374151;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.announcement-add-member-button:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+
+/* Overlay */
+
+.announcement-add-member-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(3px);
+}
+
+
+/* Modal */
+
+.announcement-add-member-modal {
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+
+    display: flex;
+    flex-direction: column;
+
+    overflow: hidden;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 20px 50px rgba(15, 23, 42, 0.16);
+}
+
+
+/* Header */
+
+.announcement-add-member-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid #eef0f3;
+}
+
+.announcement-add-member-header h3 {
+    margin: 0;
+
+    color: #111827;
+
+    font-size: 15px;
+    font-weight: 650;
+}
+
+.announcement-add-member-header p {
+    margin: 4px 0 0;
+
+    color: #9ca3af;
+
+    font-size: 11px;
+}
+
+.announcement-add-member-header button {
+    width: 28px;
+    height: 28px;
+
+    border: none;
+    border-radius: 6px;
+
+    background: transparent;
+    color: #9ca3af;
+
+    font-size: 20px;
+
+    cursor: pointer;
+}
+
+.announcement-add-member-header button:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+
+/* User list */
+
+.announcement-add-member-list {
+    flex: 1;
+
+    min-height: 120px;
+    max-height: 360px;
+
+    overflow-y: auto;
+
+    padding: 10px 12px;
+}
+
+
+/* User */
+
+.announcement-add-member-item {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px 11px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    color: #374151;
+
+    font-size: 12px;
+
+    transition:
+        background 0.15s ease;
+}
+
+.announcement-add-member-item:hover {
+    background: #f8fafc;
+}
+
+.announcement-add-member-item.selected {
+    background: #f1f5f9;
+}
+
+.announcement-add-member-item input {
+    margin: 0;
+}
+
+.announcement-add-member-item span {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* Empty */
+
+.announcement-add-member-empty {
+    margin: 0;
+
+    padding: 30px 15px;
+
+    text-align: center;
+
+    color: #9ca3af;
+
+    font-size: 12px;
+}
+
+
+/* Actions */
+
+.announcement-add-member-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    padding: 12px 16px;
+
+    border-top: 1px solid #eef0f3;
+}
+
+.announcement-add-member-actions button {
+    padding: 8px 12px;
+
+    border-radius: 7px;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.announcement-add-member-cancel {
+    border: 1px solid #e2e8f0;
+
+    background: #ffffff;
+    color: #475569;
+}
+
+.announcement-add-member-cancel:hover {
+    background: #f8fafc;
+}
+
+.announcement-add-member-confirm {
+    border: 1px solid #1f2937;
+
+    background: #1f2937;
+    color: #ffffff;
+}
+
+.announcement-add-member-confirm:hover:not(:disabled) {
+    background: #111827;
+}
+
+.announcement-add-member-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+
+/* =========================================================
+   Portal Member Role
+   ========================================================= */
+
+.announcement-member-role,
+.announcement-member-role-select {
+    flex-shrink: 0;
+
+    min-width: 88px;
+
+    padding: 5px 9px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+
+    background: #f8fafc;
+    color: #6b7280;
+
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+
+    text-align: center;
+    text-transform: capitalize;
+}
+
+
+/* =========================================================
+   Role Badge
+   ========================================================= */
+
+.announcement-member-role.host {
+    border-color: #dbeafe;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.announcement-member-role.participant {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   Role Select
+   ========================================================= */
+
+.announcement-member-role-select {
+    appearance: none;
+    -webkit-appearance: none;
+
+    padding-right: 25px;
+
+    background-color: #ffffff;
+
+    background-image:
+        linear-gradient(45deg, transparent 50%, #9ca3af 50%),
+        linear-gradient(135deg, #9ca3af 50%, transparent 50%);
+
+    background-position:
+        calc(100% - 10px) 10px,
+        calc(100% - 6px) 10px;
+
+    background-size:
+        4px 4px,
+        4px 4px;
+
+    background-repeat: no-repeat;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.announcement-member-role-select:hover {
+    border-color: #cbd5e1;
+    background-color: #f9fafb;
+}
+
+.announcement-member-role-select:focus {
+    outline: none;
+
+    border-color: #93c5fd;
+
+    box-shadow:
+        0 0 0 2px rgba(59, 130, 246, 0.10);
+}
+
+
+/* =========================================================
+   Member Row
+   ========================================================= */
+
+.announcement-portal-member {
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.announcement-portal-member:hover {
+    background: #f1f5f9;
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+    .announcement-member-role,
+    .announcement-member-role-select {
+        min-width: 78px;
+
+        padding: 5px 7px;
+
+        font-size: 9px;
     }
 
-    .announcement-card-content {
-        font-size: 12px;
+    .announcement-member-role-select {
+        padding-right: 21px;
     }
 }
 
 
-@media (max-width: 480px) {
 
-    .announcement-content-header {
-        gap: 10px;
+/* =========================================================
+   Delete Portal Button
+   ========================================================= */
+
+.announcement-delete-portal-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    min-height: 34px;
+    padding: 7px 12px;
+
+    border: 1px solid #fecaca;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #dc2626;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.announcement-delete-portal-button:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+
+    box-shadow:
+        0 2px 6px rgba(220, 38, 38, 0.08);
+}
+
+.announcement-delete-portal-button:active {
+    transform: scale(0.97);
+    background: #fee2e2;
+}
+
+.announcement-delete-portal-button:focus-visible {
+    outline: 2px solid #fca5a5;
+    outline-offset: 2px;
+}
+
+.announcement-delete-portal-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+
+/* =========================================================
+   Header Actions
+   ========================================================= */
+
+.announcement-content-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    flex-shrink: 0;
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .announcement-content-header-actions {
+        gap: 6px;
     }
 
-    .announcement-create-button {
+    .announcement-delete-portal-button {
+        min-height: 32px;
         padding: 6px 9px;
+        font-size: 10px;
+    }
+}
+
+
+
+
+/* =========================================================
+   Header Actions
+   ========================================================= */
+
+.announcement-content-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 7px;
+
+    flex-shrink: 0;
+    min-width: max-content;
+}
+
+
+/* =========================================================
+   Delete Portal Button
+   ========================================================= */
+
+.announcement-delete-portal-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    height: 31px;
+    min-height: 31px;
+
+    padding: 0 10px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #fecaca;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #dc2626;
+
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+
+    line-height: 1;
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.announcement-delete-portal-button:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+
+    box-shadow:
+        0 2px 5px rgba(220, 38, 38, 0.08);
+}
+
+.announcement-delete-portal-button:active {
+    transform: scale(0.97);
+    background: #fee2e2;
+}
+
+.announcement-delete-portal-button:focus-visible {
+    outline: 2px solid #fca5a5;
+    outline-offset: 2px;
+}
+
+.announcement-delete-portal-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .announcement-content-header-actions {
+        gap: 5px;
     }
 
-    .announcement-content-header p {
-        max-width: 150px;
+    .announcement-delete-portal-button {
+        height: 30px;
+        min-height: 30px;
+
+        padding: 0 8px;
+
+        font-size: 9px;
     }
 }

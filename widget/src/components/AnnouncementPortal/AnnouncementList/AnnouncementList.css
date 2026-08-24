@@ -5,9 +5,36 @@
 .announcement-list {
     display: flex;
     flex-direction: column;
+
     gap: 12px;
 
     padding: 16px 20px 24px;
+
+    background: #f7f8fa;
+
+    overflow-y: auto;
+}
+
+
+/* =========================================================
+   Scrollbar
+   ========================================================= */
+
+.announcement-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.announcement-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.announcement-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 
@@ -21,10 +48,13 @@
     justify-content: center;
 
     min-height: 180px;
+
     padding: 30px 20px;
 
-    color: #6b7280;
-    font-size: 13px;
+    color: #64748b;
+
+    font-size: 12px;
+    font-weight: 500;
 }
 
 
@@ -39,10 +69,14 @@
     justify-content: center;
 
     min-height: 260px;
+
     padding: 40px 20px;
 
     text-align: center;
 }
+
+
+/* Empty icon */
 
 .announcement-list-empty-icon {
     display: flex;
@@ -54,31 +88,187 @@
 
     margin-bottom: 14px;
 
+    border: 1px solid #e2e8f0;
     border-radius: 50%;
 
-    background: #f3f4f6;
+    background: #ffffff;
 
-    font-size: 24px;
+    font-size: 22px;
+
+    box-shadow:
+        0 2px 6px rgba(15, 23, 42, 0.05);
 }
+
+
+/* Empty title */
 
 .announcement-list-empty h3 {
     margin: 0;
 
-    color: #374151;
+    color: #334155;
 
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 650;
 }
+
+
+/* Empty description */
 
 .announcement-list-empty p {
     max-width: 300px;
 
     margin: 6px 0 0;
 
-    color: #9ca3af;
+    color: #94a3b8;
 
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+
+/* =========================================================
+   Announcement Card Enhancement
+   ========================================================= */
+
+/*
+ * AnnouncementList controls the spacing/background.
+ * The card itself gets slightly more breathing room here.
+ */
+
+.announcement-list .announcement-card {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 16px 17px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 1px 3px rgba(15, 23, 42, 0.035);
+
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.16s ease;
+}
+
+.announcement-list .announcement-card:hover {
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 4px 12px rgba(15, 23, 42, 0.06);
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   Card Header
+   ========================================================= */
+
+.announcement-list .announcement-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    margin-bottom: 9px;
+}
+
+
+/* =========================================================
+   Announcement Title
+   ========================================================= */
+
+.announcement-list .announcement-card-header h3 {
+    min-width: 0;
+
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    line-height: 1.4;
+
+    letter-spacing: -0.01em;
+
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   Date / Metadata
+   ========================================================= */
+
+.announcement-list .announcement-card-header span {
+    flex-shrink: 0;
+
+    padding-top: 2px;
+
+    color: #94a3b8;
+
+    font-size: 10px;
+    font-weight: 500;
+
+    line-height: 1.4;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   Main Announcement Content
+   ========================================================= */
+
+.announcement-list .announcement-card-content {
+    margin: 0;
+
+    color: #334155;
+
+    font-size: 13.5px;
+
+    line-height: 1.7;
+
+    white-space: pre-wrap;
+
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   Card Action Area
+   ========================================================= */
+
+.announcement-list .announcement-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 7px;
+
+    margin-top: 13px;
+
+    padding-top: 10px;
+
+    border-top: 1px solid #f1f5f9;
+}
+
+
+/* =========================================================
+   Small Metadata
+   ========================================================= */
+
+.announcement-list .announcement-card small {
+    color: #94a3b8;
+
+    font-size: 10px;
 }
 
 
@@ -87,12 +277,62 @@
    ========================================================= */
 
 @media (max-width: 768px) {
+
     .announcement-list {
         gap: 10px;
+
         padding: 12px;
+    }
+
+    .announcement-list .announcement-card {
+        padding: 14px;
+    }
+
+    .announcement-list .announcement-card-header h3 {
+        font-size: 14px;
+    }
+
+    .announcement-list .announcement-card-content {
+        font-size: 13px;
+
+        line-height: 1.65;
     }
 
     .announcement-list-empty {
         min-height: 220px;
+    }
+}
+
+
+/* =========================================================
+   Small Mobile
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+    .announcement-list {
+        padding: 10px;
+    }
+
+    .announcement-list .announcement-card {
+        padding: 13px;
+    }
+
+    .announcement-list .announcement-card-header {
+        gap: 8px;
+    }
+
+    .announcement-list .announcement-card-header h3 {
+        font-size: 13.5px;
+    }
+
+    .announcement-list .announcement-card-header span {
+        font-size: 9px;
+    }
+
+    .announcement-list .announcement-card-content {
+        font-size: 12.5px;
+
+        line-height: 1.65;
     }
 }
