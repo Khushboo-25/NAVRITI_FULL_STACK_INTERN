@@ -319,10 +319,10 @@
 
     padding: 6px 11px;
 
-    border: 1px solid #1e293b;
+    border: 1px solid #55408f;
     border-radius: 7px;
 
-    background: #1e293b;
+    background: #55408f;
     color: #ffffff;
 
     font-size: 11px;
@@ -340,8 +340,8 @@
 }
 
 .announcement-create-button:hover {
-    background: #334155;
-    border-color: #334155;
+    background: #3e2c70;
+    border-color: #3e2c70;
 
     box-shadow:
         0 2px 6px rgba(15, 23, 42, 0.12);
@@ -696,7 +696,42 @@
 
     gap: 6px;
 
+    max-height: 260px;
+    overflow-y: auto;
+
     padding: 0 13px 13px;
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   Member List Scrollbar
+   ========================================================= */
+
+.announcement-portal-member-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.announcement-portal-member-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-portal-member-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.announcement-portal-member-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+
+/* Firefox */
+
+.announcement-portal-member-list {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
 }
 
 
@@ -849,6 +884,90 @@
     .announcement-card-content {
         font-size: 12.5px;
         line-height: 1.65;
+    }
+}
+
+/* Final alignment rules for the announcement workspace */
+
+.announcement-content-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.announcement-content-header > div:first-child {
+    min-width: 0;
+}
+
+.announcement-selected-portal-title-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 7px;
+}
+
+.announcement-selected-portal-title-row h3 {
+    min-width: 0;
+}
+
+.announcement-content-header-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.announcement-portal-menu {
+    position: relative;
+}
+
+.announcement-content-header .announcement-create-button,
+.announcement-content-header .announcement-back-button,
+.announcement-content-header .announcement-portal-menu-button {
+    flex-shrink: 0;
+}
+
+.announcement-list {
+    align-items: stretch;
+}
+
+.announcement-list .announcement-card-shell {
+    min-width: 0;
+}
+
+.announcement-list .announcement-card-header {
+    align-items: center;
+}
+
+.announcement-list .announcement-card-heading {
+    min-width: 0;
+}
+
+.announcement-list .announcement-card-actions {
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.announcement-portal-member {
+    min-height: 38px;
+}
+
+@media (max-width: 480px) {
+    .announcement-content-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px;
+    }
+
+    .announcement-content-header-actions {
+        gap: 3px;
+    }
+
+    .announcement-content-header .announcement-create-button {
+        max-width: 112px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 .announcement-member-actions {
@@ -1462,4 +1581,331 @@
 
         font-size: 9px;
     }
+}
+
+
+/* =========================================================
+   Selected Portal Header
+   ========================================================= */
+
+.announcement-selected-portal-header {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    padding: 12px 14px;
+
+    background: #ffffff;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.announcement-selected-portal-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.announcement-selected-portal-info h3 {
+    margin: 0;
+
+    color: #111827;
+
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.announcement-selected-portal-info p {
+    margin: 3px 0 0;
+
+    color: #64748b;
+
+    font-size: 11px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   Three Dot Menu
+   ========================================================= */
+
+.announcement-portal-menu {
+    position: relative;
+
+    flex-shrink: 0;
+}
+
+.announcement-portal-menu-button {
+    width: 32px;
+    height: 32px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+
+    background: #ffffff;
+
+    color: #475569;
+
+    font-size: 20px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.announcement-portal-menu-button:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+
+/* =========================================================
+   Menu Dropdown
+   ========================================================= */
+
+.announcement-portal-menu-dropdown {
+    position: absolute;
+
+    top: calc(100% + 6px);
+    right: 0;
+
+    z-index: 100;
+
+    width: 170px;
+
+    padding: 5px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.announcement-portal-menu-dropdown button {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 8px 10px;
+
+    border: none;
+    border-radius: 5px;
+
+    background: transparent;
+
+    color: #334155;
+
+    font-family: inherit;
+    font-size: 11px;
+
+    text-align: left;
+
+    cursor: pointer;
+}
+
+.announcement-portal-menu-dropdown button:hover {
+    background: #f8fafc;
+}
+
+.announcement-portal-menu-dropdown
+.announcement-portal-menu-danger {
+    color: #dc2626;
+}
+
+
+/* =========================================================
+   Members
+   ========================================================= */
+
+.announcement-portal-members {
+    background: #ffffff;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.announcement-portal-members-header {
+    padding: 9px 13px 7px;
+}
+
+.announcement-portal-members-title {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+}
+
+.announcement-portal-members-title h3 {
+    margin: 0;
+
+    color: #374151;
+
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.announcement-portal-member-count {
+    color: #94a3b8;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   Scrollable Member List
+   ========================================================= */
+
+.announcement-portal-member-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 0px;
+
+    max-height: 240px;
+
+    overflow-y: auto;
+
+    padding: 0 23px 43px 23px ;
+
+    box-sizing: border-box;
+    /* margin-bottom: 20px; */
+}
+
+.announcement-portal-member-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.announcement-portal-member-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.announcement-portal-member-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+
+    border-radius: 10px;
+}
+
+.announcement-portal-member-list {
+    scrollbar-width: thin;
+
+    scrollbar-color:
+        #cbd5e1
+        transparent;
+}
+
+
+/* =========================================================
+   Member
+   ========================================================= */
+
+.announcement-portal-member {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 7px 8px;
+
+    border: 1px solid #f1f5f9;
+    border-radius: 7px;
+
+    background: #fafafa;
+}
+
+.announcement-portal-member-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.announcement-portal-member-name {
+    color: #334155;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.announcement-portal-member-role {
+    margin-top: 2px;
+
+    color: #94a3b8;
+
+    font-size: 10px;
+}
+
+.announcement-portal-member-actions {
+    display: flex;
+    align-items: center;
+
+    gap: 5px;
+
+    flex-shrink: 0;
+}
+
+.announcement-portal-member-actions button {
+    padding: 4px 7px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+
+    background: #ffffff;
+
+    color: #64748b;
+
+    font-family: inherit;
+    font-size: 9px;
+
+    cursor: pointer;
+}
+
+.announcement-portal-member-actions button:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.announcement-portal-members-close {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+
+    background: #ffffff;
+    color: #64748b;
+
+    font-size: 17px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.announcement-portal-members-close:hover {
+    background: #f8fafc;
+    color: #334155;
+    border-color: #cbd5e1;
 }

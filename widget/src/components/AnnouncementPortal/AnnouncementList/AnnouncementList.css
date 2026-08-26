@@ -1,31 +1,18 @@
 /* =========================================================
-   Announcement List
-   ========================================================= */
+    Announcement List
+    ========================================================= */
 
 .announcement-list {
     display: flex;
     flex-direction: column;
-
     gap: 12px;
-
     padding: 16px 20px 24px;
-
     background: #f7f8fa;
-
     overflow-y: auto;
 }
 
-
-/* =========================================================
-   Scrollbar
-   ========================================================= */
-
 .announcement-list::-webkit-scrollbar {
     width: 5px;
-}
-
-.announcement-list::-webkit-scrollbar-track {
-    background: transparent;
 }
 
 .announcement-list::-webkit-scrollbar-thumb {
@@ -33,306 +20,142 @@
     border-radius: 10px;
 }
 
-.announcement-list::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-
-/* =========================================================
-   Loading
-   ========================================================= */
-
-.announcement-list-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    min-height: 180px;
-
-    padding: 30px 20px;
-
-    color: #64748b;
-
-    font-size: 12px;
-    font-weight: 500;
-}
-
-
-/* =========================================================
-   Empty State
-   ========================================================= */
-
+.announcement-list-loading,
 .announcement-list-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-
-    min-height: 260px;
-
-    padding: 40px 20px;
-
+    min-height: 180px;
+    padding: 30px 20px;
     text-align: center;
 }
 
+.announcement-list-loading {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+}
 
-/* Empty icon */
+.announcement-list-empty {
+    min-height: 260px;
+}
 
 .announcement-list-empty-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-
     width: 52px;
     height: 52px;
-
     margin-bottom: 14px;
-
     border: 1px solid #e2e8f0;
     border-radius: 50%;
-
     background: #ffffff;
-
     font-size: 22px;
-
-    box-shadow:
-        0 2px 6px rgba(15, 23, 42, 0.05);
 }
-
-
-/* Empty title */
 
 .announcement-list-empty h3 {
     margin: 0;
-
     color: #334155;
-
     font-size: 14px;
     font-weight: 650;
 }
 
-
-/* Empty description */
-
 .announcement-list-empty p {
     max-width: 300px;
-
     margin: 6px 0 0;
-
     color: #94a3b8;
-
     font-size: 11px;
     line-height: 1.55;
 }
 
+.announcement-list .announcement-card-shell {
+    width: 100%;
+}
 
-/* =========================================================
-   Announcement Card Enhancement
-   ========================================================= */
+.announcement-list .announcement-author {
+    margin: 0 8px 3px;
+    font-size: 9px;
+}
 
-/*
- * AnnouncementList controls the spacing/background.
- * The card itself gets slightly more breathing room here.
- */
+.announcement-list .announcement-author time {
+    font-size: 8px;
+}
 
 .announcement-list .announcement-card {
     width: 100%;
-
-    box-sizing: border-box;
-
-    padding: 16px 17px;
-
-    border: 1px solid #e2e8f0;
-    border-radius: 11px;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 1px 3px rgba(15, 23, 42, 0.035);
-
-    transition:
-        border-color 0.16s ease,
-        box-shadow 0.16s ease,
-        transform 0.16s ease;
+    padding: 10px 12px;
+    border: 1px solid #c8e2c4;
+    border-radius: 8px;
+    background: #d9fdd3;
+    box-shadow: 0 3px 10px rgba(25, 60, 38, 0.08);
 }
 
 .announcement-list .announcement-card:hover {
-    border-color: #cbd5e1;
-
-    box-shadow:
-        0 4px 12px rgba(15, 23, 42, 0.06);
-
-    transform: translateY(-1px);
+    border-color: #a9d1a5;
+    box-shadow: 0 6px 16px rgba(25, 60, 38, 0.12);
 }
-
-
-/* =========================================================
-   Card Header
-   ========================================================= */
 
 .announcement-list .announcement-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    gap: 14px;
-
-    margin-bottom: 9px;
+    gap: 10px;
+    margin-bottom: 6px;
 }
-
-
-/* =========================================================
-   Announcement Title
-   ========================================================= */
 
 .announcement-list .announcement-card-header h3 {
-    min-width: 0;
-
-    margin: 0;
-
-    color: #0f172a;
-
-    font-size: 15px;
-    font-weight: 700;
-
-    line-height: 1.4;
-
-    letter-spacing: -0.01em;
-
-    word-break: break-word;
+    font-size: 13px;
+    line-height: 1.3;
 }
-
-
-/* =========================================================
-   Date / Metadata
-   ========================================================= */
-
-.announcement-list .announcement-card-header span {
-    flex-shrink: 0;
-
-    padding-top: 2px;
-
-    color: #94a3b8;
-
-    font-size: 10px;
-    font-weight: 500;
-
-    line-height: 1.4;
-
-    white-space: nowrap;
-}
-
-
-/* =========================================================
-   Main Announcement Content
-   ========================================================= */
 
 .announcement-list .announcement-card-content {
-    margin: 0;
-
-    color: #334155;
-
-    font-size: 13.5px;
-
-    line-height: 1.7;
-
-    white-space: pre-wrap;
-
-    word-break: break-word;
+    font-size: 12px;
+    line-height: 1.45;
 }
-
-
-/* =========================================================
-   Card Action Area
-   ========================================================= */
 
 .announcement-list .announcement-card-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-
-    gap: 7px;
-
-    margin-top: 13px;
-
-    padding-top: 10px;
-
-    border-top: 1px solid #f1f5f9;
+    gap: 3px;
 }
 
-
-/* =========================================================
-   Small Metadata
-   ========================================================= */
-
-.announcement-list .announcement-card small {
-    color: #94a3b8;
-
-    font-size: 10px;
+.announcement-list .announcement-edit-button,
+.announcement-list .announcement-delete-button {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    font-size: 12px;
 }
 
-
-/* =========================================================
-   Responsive
-   ========================================================= */
+.announcement-list .announcement-audience {
+    margin-top: 7px;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 10px;
+    background: #bff1b7;
+    font-size: 8px;
+}
 
 @media (max-width: 768px) {
-
     .announcement-list {
         gap: 10px;
-
         padding: 12px;
-    }
-
-    .announcement-list .announcement-card {
-        padding: 14px;
-    }
-
-    .announcement-list .announcement-card-header h3 {
-        font-size: 14px;
-    }
-
-    .announcement-list .announcement-card-content {
-        font-size: 13px;
-
-        line-height: 1.65;
-    }
-
-    .announcement-list-empty {
-        min-height: 220px;
     }
 }
 
-
-/* =========================================================
-   Small Mobile
-   ========================================================= */
-
 @media (max-width: 480px) {
-
     .announcement-list {
         padding: 10px;
     }
 
     .announcement-list .announcement-card {
-        padding: 13px;
-    }
-
-    .announcement-list .announcement-card-header {
-        gap: 8px;
+        padding: 8px 10px;
     }
 
     .announcement-list .announcement-card-header h3 {
-        font-size: 13.5px;
-    }
-
-    .announcement-list .announcement-card-header span {
-        font-size: 9px;
+        font-size: 12px;
     }
 
     .announcement-list .announcement-card-content {
-        font-size: 12.5px;
-
-        line-height: 1.65;
+        font-size: 11.5px;
+        line-height: 1.5;
     }
 }

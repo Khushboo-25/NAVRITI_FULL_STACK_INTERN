@@ -291,16 +291,20 @@ function MessageItem({
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="rtc-file-open"
+                                            aria-label="Open file"
+                                            title="Open file"
                                         >
-                                            Open
+                                                ↗
                                         </a>
 
                                         <a
                                             href={message.attachment?.fileUrl}
                                             download={message.attachment?.fileName}
                                             className="rtc-file-download"
+                                            aria-label="Download file"
+                                            title="Download file"
                                         >
-                                            Download
+                                            ↓
                                         </a>
 
                                     </div>
@@ -327,8 +331,10 @@ function MessageItem({
                                         type="button"
                                         className="rtc-edit-button"
                                         onClick={handleEdit}
+                                        aria-label="Edit message"
+                                        title="Edit message"
                                     >
-                                        Edit
+                                        ✎
                                     </button>
                                 )}
 
@@ -338,8 +344,10 @@ function MessageItem({
                                     onClick={() =>
                                         onDeleteMessage(message._id)
                                     }
+                                    aria-label="Delete message"
+                                    title="Delete message"
                                 >
-                                    Delete
+                                    🗑
                                 </button>
 
                             </div>

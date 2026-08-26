@@ -37,7 +37,21 @@ function AnnouncementCard({
 
 
     return (
-        <article className="announcement-card">
+        <div className="announcement-card-shell">
+
+            <div className="announcement-author">
+
+                <span>
+                    By {announcement.senderId}
+                </span>
+
+                <time>
+                    {formatDate(announcement.publishedAt)}
+                </time>
+
+            </div>
+
+            <article className="announcement-card">
 
             {/* =================================
                 Header
@@ -50,26 +64,6 @@ function AnnouncementCard({
                     <h3>
                         {announcement.title}
                     </h3>
-
-                    <div className="announcement-meta">
-
-                        <span>
-                            By {announcement.senderId}
-                        </span>
-
-                        <span>
-                            •
-                        </span>
-
-                        <span>
-                            {
-                                formatDate(
-                                    announcement.publishedAt
-                                )
-                            }
-                        </span>
-
-                    </div>
 
                 </div>
 
@@ -85,16 +79,20 @@ function AnnouncementCard({
                         onClick={() =>
                             onEdit(announcement)
                         }
+                        aria-label="Edit announcement"
+                        title="Edit announcement"
                     >
-                        Edit
+                        ✎
                     </button>
 
                     <button
                         type="button"
                         className="announcement-delete-button"
                         onClick={handleDelete}
+                        aria-label="Delete announcement"
+                        title="Delete announcement"
                     >
-                        Delete
+                        🗑
                     </button>
 
                 </div>
@@ -120,17 +118,10 @@ function AnnouncementCard({
 
             <div className="announcement-audience">
 
-                <span className="announcement-audience-label">
-                    Audience:
-                </span>
-
-                <span>
-                    {
-                        announcement.targetAudience ===
-                        "all"
-                            ? "Everyone"
-                            : "Selected users"
-                    }
+                    <span className="announcement-audience-label">
+                    {announcement.targetAudience === "all"
+                        ? "Everyone"
+                        : "Specific users"}
                 </span>
 
             </div>
@@ -146,7 +137,9 @@ function AnnouncementCard({
                 }
             />
 
-        </article>
+            </article>
+
+        </div>
     );
 }
 

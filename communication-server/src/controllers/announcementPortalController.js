@@ -4,6 +4,12 @@ import Announcement from "../models/Announcement.js";
 import cloudinary from "../config/cloudinary.js";
 
 
+let io = null;
+
+export const setAnnouncementSocket = (socketIo) => {
+    io = socketIo;
+};
+
 const createAnnouncementPortal = async (req, res) => {
     try {
 
@@ -181,7 +187,26 @@ const createAnnouncementPortal = async (req, res) => {
                     participantMembers
                 );
         }
+        if (io) {
 
+            const memberIds = [
+                userId,
+                ...createdMembers.map(
+                    (member) => member.userId
+                ),
+            ];
+
+            memberIds.forEach((memberId) => {
+
+                io.to(`user:${memberId}`).emit(
+                    "announcement:portal-created",
+                    {
+                        portalId: portal._id,
+                    }
+                );
+
+            });
+        }
 
         /*
          * -----------------------------------------
@@ -261,6 +286,31 @@ const addPortalMembers = async (req, res) => {
 
     const createdMembers =
       await AnnouncementPortalMember.insertMany(newMembers);
+
+    if (io) {
+
+        createdMembers.forEach((member) => {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-added",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+
+        });
+
+
+        io.to(`user:${hostUserId}`).emit(
+            "announcement:member-added",
+            {
+                portalId,
+                userId: hostUserId,
+            }
+        );
+    }
+
 
     return res.status(201).json({
       message: "Members added successfully",
@@ -1104,6 +1154,26 @@ const removePortalMember = async (req, res) => {
             _id: member._id,
         });
 
+        if (io) {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-removed",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+
+
+            io.to(`user:${hostUserId}`).emit(
+                "announcement:member-removed",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+        }
+
         return res.status(200).json({
             message: "Member removed successfully",
             removedMember: {
@@ -1242,6 +1312,28 @@ const updatePortalMemberRole = async (req, res) => {
 
         await member.save();
 
+        if (io) {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-role-updated",
+                {
+                    portalId,
+                    userId: member.userId,
+                    role: member.role,
+                }
+            );
+
+
+            io.to(`user:${hostUserId}`).emit(
+                "announcement:member-role-updated",
+                {
+                    portalId,
+                    userId: member.userId,
+                    role: member.role,
+                }
+            );
+        }
+
         return res.status(200).json({
             message:
                 "Member role updated successfully",
@@ -1329,10 +1421,12 @@ const deleteAnnouncementPortal = async (req, res) => {
          * -----------------------------------------
          */
 
-        await Announcement.deleteMany({
-            portalId,
-        });
-
+        const portalMembers =
+            await AnnouncementPortalMember.find({
+                portalId,
+        }).select("userId");
+        
+        
         /*
          * -----------------------------------------
          * Delete all portal members
@@ -1342,6 +1436,19 @@ const deleteAnnouncementPortal = async (req, res) => {
         await AnnouncementPortalMember.deleteMany({
             portalId,
         });
+        if (io) {
+
+            portalMembers.forEach((member) => {
+
+                io.to(`user:${member.userId}`).emit(
+                    "announcement:portal-deleted",
+                    {
+                        portalId,
+                    }
+                );
+
+            });
+        }
 
         /*
          * -----------------------------------------
@@ -1374,6 +1481,8 @@ const deleteAnnouncementPortal = async (req, res) => {
         });
     }
 };
+
+
 
 export {
   // your existing exports...

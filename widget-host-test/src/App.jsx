@@ -2,13 +2,12 @@ import "./App.css";
 import CommunicationWidget from "../../widget/src/CommunicationWidget";
 
 const currentUser = {
-    
     userId: "user-13",
-        displayName: "Khushboo13",
-        role: "admin",
-    
-        
+    displayName: "Khushboo13",
+    role: "admin",
 };
+
+const serverUrl = "http://localhost:5000";
 
 const users = [
     currentUser,
@@ -62,11 +61,49 @@ const users = [
 
 function App() {
     return (
-        <CommunicationWidget
-            currentUser={currentUser}
-            users={users}
-            serverUrl="http://localhost:5000"
-        />
+        <main className="host-test-shell">
+            <header className="host-test-header">
+                <div>
+                    <span className="host-test-eyebrow">
+                        Integration sandbox
+                    </span>
+                    <h1>Host Application</h1>
+                    <p>
+                        Global styles are intentionally loud here to test widget isolation.
+                    </p>
+                </div>
+
+                <button type="button" className="host-test-action">
+                    Host Action
+                </button>
+            </header>
+
+            <section className="host-test-grid">
+                <article className="host-test-card">
+                    <span>Connected users</span>
+                    <strong>{users.length}</strong>
+                </article>
+                <article className="host-test-card">
+                    <span>Environment</span>
+                    <strong>Local</strong>
+                </article>
+                <article className="host-test-card host-test-card-highlight">
+                    <span>Widget status</span>
+                    <strong>Ready to test</strong>
+                </article>
+            </section>
+
+            <section className="host-test-widget-stage">
+                <div className="host-test-stage-label">
+                    Embedded Communication Widget
+                </div>
+                <CommunicationWidget
+                    currentUser={currentUser}
+                    users={users}
+                    serverUrl={serverUrl}
+                />
+            </section>
+        </main>
     );
 }
 

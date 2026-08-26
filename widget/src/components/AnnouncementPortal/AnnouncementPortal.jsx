@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState,useRef } from "react";
 
 import {
     getUserAnnouncementPortals,
@@ -12,10 +12,29 @@ import {
     removePortalMember,
     updatePortalMemberRole,
     deleteAnnouncementPortal,
+
 } from "../../services/announcementPortalService";
 
-import AnnouncementList
-    from "./AnnouncementList/AnnouncementList.jsx";
+import {
+    getSocket,
+    joinAnnouncementRTC,
+    leaveAnnouncementRTC,
+    sendAnnouncementOffer,
+    sendAnnouncementAnswer,
+    sendAnnouncementIceCandidate,
+} from "../../services/socket.js";
+
+import PortalList
+    from "./PortalList/PortalList.jsx";
+
+import PortalHeader
+    from "./PortalHeader/PortalHeader.jsx";
+
+import PortalMembers
+    from "./PortalMembers/PortalMembers.jsx";
+
+import PortalAnnouncements
+    from "./PortalAnnouncements/PortalAnnouncements.jsx";
 
 import CreateAnnouncementModal
     from "./CreateAnnouncementModal/CreateAnnouncementModal.jsx";
@@ -91,6 +110,9 @@ function AnnouncementPortal({
 
     const [showMembers, setShowMembers] =
         useState(false);
+
+    const [showPortalMenu, setShowPortalMenu] =
+        useState(false);
     const [showAddMember, setShowAddMember] =
         useState(false);
 
@@ -99,6 +121,12 @@ function AnnouncementPortal({
 
     const [addingMembers, setAddingMembers] =
         useState(false);
+
+    const peerConnectionRef =
+        useRef(null);
+
+    const remoteUserRef =
+        useRef(null);
 
 
 
@@ -376,7 +404,7 @@ function AnnouncementPortal({
                     }
 
                     if (!currentSelected) {
-                        return data[0];
+                        return null;
                     }
 
                     const updatedPortal =
@@ -388,7 +416,7 @@ function AnnouncementPortal({
 
                     return (
                         updatedPortal ||
-                        data[0]
+                        null
                     );
                 }
             );
@@ -412,7 +440,112 @@ function AnnouncementPortal({
         }
     };
 
+    /*
+    * --------------------------------------------------
+    * Announcement portal socket updates
+    * --------------------------------------------------
+    */
 
+    useEffect(() => {
+
+        if (!userId) {
+            return;
+        }
+
+
+        const socket =
+            getSocket();
+
+
+        const handlePortalCreated = () => {
+
+            console.log(
+                "Announcement portal created - refreshing portals"
+            );
+
+            loadPortals();
+
+        };
+
+
+        const handlePortalDeleted = () => {
+
+            console.log(
+                "Announcement portal deleted - refreshing portals"
+            );
+
+            loadPortals();
+
+        };
+
+
+        const handlePortalMemberChanged = () => {
+
+            console.log(
+                "Announcement portal membership changed - refreshing portals"
+            );
+
+            loadPortals();
+
+        };
+
+
+        socket.on(
+            "announcement:portal-created",
+            handlePortalCreated
+        );
+
+        socket.on(
+            "announcement:portal-deleted",
+            handlePortalDeleted
+        );
+
+        socket.on(
+            "announcement:member-added",
+            handlePortalMemberChanged
+        );
+
+        socket.on(
+            "announcement:member-removed",
+            handlePortalMemberChanged
+        );
+
+        socket.on(
+            "announcement:member-role-updated",
+            handlePortalMemberChanged
+        );
+
+
+        return () => {
+
+            socket.off(
+                "announcement:portal-created",
+                handlePortalCreated
+            );
+
+            socket.off(
+                "announcement:portal-deleted",
+                handlePortalDeleted
+            );
+
+            socket.off(
+                "announcement:member-added",
+                handlePortalMemberChanged
+            );
+
+            socket.off(
+                "announcement:member-removed",
+                handlePortalMemberChanged
+            );
+
+            socket.off(
+                "announcement:member-role-updated",
+                handlePortalMemberChanged
+            );
+
+        };
+
+    }, [userId]);
     /*
      * --------------------------------------------------
      * Load portal members
@@ -420,6 +553,11 @@ function AnnouncementPortal({
      */
 
     useEffect(() => {
+
+        setShowMembers(false);
+        setShowPortalMenu(false);
+        setShowAddMember(false);
+        setSelectedNewMembers([]);
 
         if (
             !selectedPortal?._id ||
@@ -546,6 +684,339 @@ function AnnouncementPortal({
 
     }, [
         selectedPortal,
+        userId,
+    ]);
+    
+
+    /*
+    * --------------------------------------------------
+    * Announcement WebRTC connection
+    * --------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        if (
+            !selectedPortal?._id ||
+            !userId
+        ) {
+            return;
+        }
+
+        const socket =
+            getSocket();
+
+        const portalId =
+            selectedPortal._id;
+
+
+        const createPeerConnection = (
+            remoteUserId
+        ) => {
+
+            if (
+                peerConnectionRef.current
+            ) {
+                return peerConnectionRef.current;
+            }
+
+            remoteUserRef.current =
+                remoteUserId;
+
+
+            const peerConnection =
+                new RTCPeerConnection({
+                    iceServers: [
+                        {
+                            urls:
+                                "stun:stun.l.google.com:19302",
+                        },
+                    ],
+                });
+
+
+            peerConnection.onicecandidate =
+                (event) => {
+
+                    if (
+                        !event.candidate
+                    ) {
+                        return;
+                    }
+
+                    sendAnnouncementIceCandidate(
+                        portalId,
+                        userId,
+                        event.candidate
+                    );
+                };
+
+
+            peerConnection.onconnectionstatechange =
+                () => {
+
+                    console.log(
+                        "Announcement WebRTC state:",
+                        peerConnection.connectionState
+                    );
+
+                };
+
+
+            peerConnectionRef.current =
+                peerConnection;
+
+            return peerConnection;
+        };
+
+
+        /*
+        * Someone joined the portal.
+        * We become the caller.
+        */
+
+        const handleUserJoined = async (
+            data
+        ) => {
+
+            console.log(
+                "Announcement RTC user joined:",
+                data
+            );
+
+            const peerConnection =
+                createPeerConnection(
+                    data.userId
+                );
+
+            const offer =
+                await peerConnection.createOffer();
+
+            await peerConnection.setLocalDescription(
+                offer
+            );
+
+            sendAnnouncementOffer(
+                portalId,
+                userId,
+                offer
+            );
+        };
+
+
+        /*
+        * Receive offer.
+        * We become the answerer.
+        */
+
+        const handleOffer = async (
+            data
+        ) => {
+
+            console.log(
+                "Announcement RTC offer received:",
+                data
+            );
+
+            const peerConnection =
+                createPeerConnection(
+                    data.userId
+                );
+
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(
+                    data.offer
+                )
+            );
+
+            const answer =
+                await peerConnection.createAnswer();
+
+            await peerConnection.setLocalDescription(
+                answer
+            );
+
+            sendAnnouncementAnswer(
+                portalId,
+                userId,
+                answer
+            );
+        };
+
+
+        /*
+        * Receive answer.
+        */
+
+        const handleAnswer = async (
+            data
+        ) => {
+
+            console.log(
+                "Announcement RTC answer received:",
+                data
+            );
+
+            const peerConnection =
+                peerConnectionRef.current;
+
+            if (!peerConnection) {
+                return;
+            }
+
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(
+                    data.answer
+                )
+            );
+        };
+
+
+        /*
+        * Receive ICE candidate.
+        */
+
+        const handleIceCandidate = async (
+            data
+        ) => {
+
+            const peerConnection =
+                peerConnectionRef.current;
+
+            if (
+                !peerConnection ||
+                !data.candidate
+            ) {
+                return;
+            }
+
+            try {
+
+                await peerConnection.addIceCandidate(
+                    new RTCIceCandidate(
+                        data.candidate
+                    )
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to add ICE candidate:",
+                    error
+                );
+
+            }
+        };
+
+
+        const handleUserLeft = (
+            data
+        ) => {
+
+            console.log(
+                "Announcement RTC user left:",
+                data
+            );
+
+            if (
+                peerConnectionRef.current
+            ) {
+
+                peerConnectionRef.current.close();
+
+                peerConnectionRef.current =
+                    null;
+
+            }
+
+            remoteUserRef.current =
+                null;
+        };
+
+
+        socket.on(
+            "announcement:userJoined",
+            handleUserJoined
+        );
+
+        socket.on(
+            "announcement:userLeft",
+            handleUserLeft
+        );
+
+        socket.on(
+            "announcement:offer",
+            handleOffer
+        );
+
+        socket.on(
+            "announcement:answer",
+            handleAnswer
+        );
+
+        socket.on(
+            "announcement:ice-candidate",
+            handleIceCandidate
+        );
+
+
+        joinAnnouncementRTC(
+            portalId,
+            userId
+        );
+
+
+        return () => {
+
+            leaveAnnouncementRTC(
+                portalId,
+                userId
+            );
+
+            socket.off(
+                "announcement:userJoined",
+                handleUserJoined
+            );
+
+            socket.off(
+                "announcement:userLeft",
+                handleUserLeft
+            );
+
+            socket.off(
+                "announcement:offer",
+                handleOffer
+            );
+
+            socket.off(
+                "announcement:answer",
+                handleAnswer
+            );
+
+            socket.off(
+                "announcement:ice-candidate",
+                handleIceCandidate
+            );
+
+
+            if (
+                peerConnectionRef.current
+            ) {
+
+                peerConnectionRef.current.close();
+
+                peerConnectionRef.current =
+                    null;
+
+            }
+
+            remoteUserRef.current =
+                null;
+
+        };
+
+    }, [
+        selectedPortal?._id,
         userId,
     ]);
 
@@ -919,9 +1390,19 @@ function AnnouncementPortal({
         }
 
 
+        const memberUser =
+            users.find(
+                (user) =>
+                    user.userId === member.userId
+            );
+
+        const displayName =
+            memberUser?.displayName ||
+            member.userId;
+
         const confirmed =
             window.confirm(
-                `Are you sure you want to remove ${member.userId} from this portal?`
+                `Are you sure you want to remove ${displayName} from this portal?`
             );
 
 
@@ -1095,70 +1576,17 @@ function AnnouncementPortal({
                 Portal selector
             ========================================== */}
 
-            {portals.length > 0 && (
-
-                <div className="announcement-portals">
-
-                    <div className="announcement-portal-label">
-
-                        Portals
-
-                    </div>
-
-
-                    <div className="announcement-portal-list">
-
-                        {portals.map(
-                            (portal) => {
-
-                                const isSelected =
-                                    selectedPortal?._id ===
-                                    portal._id;
-
-
-                                return (
-
-                                    <button
-                                        key={
-                                            portal._id
-                                        }
-                                        type="button"
-                                        className={`announcement-portal-item ${
-                                            isSelected
-                                                ? "active"
-                                                : ""
-                                        }`}
-                                        onClick={() =>
-                                            setSelectedPortal(
-                                                portal
-                                            )
-                                        }
-                                    >
-
-                                        <span>
-                                            {
-                                                portal.name
-                                            }
-                                        </span>
-
-                                        <small>
-                                            {
-                                                portal.role
-                                            }
-                                        </small>
-
-                                    </button>
-
-                                );
-
-                            }
-                        )}
-
-                    </div>
-
-                </div>
-
-            )}
+            <PortalList
+                portals={portals}
+                selectedPortal={selectedPortal}
+                onSelect={(portal) => {
+                    setSelectedPortal(portal);
+                    setShowMembers(false);
+                    setShowPortalMenu(false);
+                    setShowAddMember(false);
+                    setSelectedNewMembers([]);
+                }}
+            />
 
 
             {/* =========================================
@@ -1212,417 +1640,106 @@ function AnnouncementPortal({
 
                 <div className="announcement-content">
 
+                    <PortalHeader
+                        portal={selectedPortal}
+                        memberCount={portalMembers.length}
+                        showMembers={showMembers}
+                        showPortalMenu={showPortalMenu}
+                        canManage={
+                            selectedPortal.role === "host"
+                        }
+                        onCreateAnnouncement={() =>
+                            setIsCreateAnnouncementOpen(
+                                true
+                            )
+                        }
+                        onToggleMenu={() =>
+                            setShowPortalMenu(
+                                (prev) => !prev
+                            )
+                        }
+                        onToggleMembers={() => {
+                            setShowMembers(
+                                (prev) => !prev
+                            );
 
-                    {/* =================================
-                        Members
-                    ================================= */}
+                            setShowPortalMenu(false);
+                        }}
+                        onAddMembers={() => {
+                            setShowAddMember(true);
+                            setShowMembers(true);
+                            setShowPortalMenu(false);
+                        }}
+                        onDeletePortal={() => {
+                            setShowPortalMenu(false);
+                            handleDeletePortal();
+                        }}
 
-                    <div className="announcement-portal-members">
+                        onClose={() => setSelectedPortal(null)}
+                    />
 
-                        <button
-                            type="button"
-                            className="announcement-portal-members-toggle"
-                            onClick={() =>
-                                setShowMembers(
-                                    (prev) => !prev
-                                )
+
+                    <PortalMembers
+                        members={portalMembers}
+                        users={users}
+                        currentUserId={userId}
+                        portal={selectedPortal}
+                        loading={membersLoading}
+                        show={showMembers}
+                        showAddMember={showAddMember}
+                        availableMembers={
+                            availablePortalMembers
+                        }
+                        selectedNewMembers={
+                            selectedNewMembers
+                        }
+                        addingMembers={addingMembers}
+                        onClose={() =>
+                            setShowMembers(false)
+                        }
+                        onRoleChange={
+                            handleRoleChange
+                        }
+                        onRemove={
+                            handleRemovePortalMember
+                        }
+                        onToggleNewMember={(
+                            memberUserId
+                        ) => {
+
+                            setSelectedNewMembers(
+                                (prev) =>
+                                    prev.includes(
+                                        memberUserId
+                                    )
+                                        ? prev.filter(
+                                            (id) =>
+                                                id !==
+                                                memberUserId
+                                        )
+                                        : [
+                                            ...prev,
+                                            memberUserId,
+                                        ]
+                            );
+
+                        }}
+                        onAddMembers={
+                            handleAddPortalMembers
+                        }
+                        onCloseAddMember={() => {
+                            if (!addingMembers) {
+                                setShowAddMember(false);
+                                setSelectedNewMembers([]);
                             }
-                        >
+                        }}
+                    />
 
-                        <div className="announcement-portal-members-title">
 
-                            <h3>
-                                Members
-                            </h3>
-
-                            <span className="announcement-portal-member-count">
-                                {portalMembers.length}
-                            </span>
-
-                        </div>
-
-                        {selectedPortal.role === "host" && (
-
-                            <button
-                                type="button"
-                                className="announcement-add-member-button"
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    setShowAddMember(true);
-                                }}
-                            >
-                                + Add Member
-                            </button>
-
-                        )}
-
-
-                            <span
-                                className={`announcement-portal-members-arrow ${
-                                    showMembers
-                                        ? "open"
-                                        : ""
-                                }`}
-                            >
-                                ▾
-                            </span>
-
-                        </button>
-                        {showAddMember && (
-
-                            <div className="announcement-add-member-overlay">
-
-                                <div className="announcement-add-member-modal">
-
-                                    <div className="announcement-add-member-header">
-
-                                        <div>
-                                            <h3>
-                                                Add Members
-                                            </h3>
-
-                                            <p>
-                                                Select users to add to this portal.
-                                            </p>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowAddMember(false);
-                                                setSelectedNewMembers([]);
-                                            }}
-                                        >
-                                            ×
-                                        </button>
-
-                                    </div>
-
-
-                                    <div className="announcement-add-member-list">
-
-                                        {availablePortalMembers.length === 0 ? (
-
-                                            <p className="announcement-add-member-empty">
-                                                No users available to add.
-                                            </p>
-
-                                        ) : (
-
-                                            availablePortalMembers.map(
-                                                (user) => {
-
-                                                    const isSelected =
-                                                        selectedNewMembers.includes(
-                                                            user.userId
-                                                        );
-
-                                                    return (
-
-                                                        <label
-                                                            key={user.userId}
-                                                            className={`announcement-add-member-item ${
-                                                                isSelected
-                                                                    ? "selected"
-                                                                    : ""
-                                                            }`}
-                                                        >
-
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isSelected}
-                                                                onChange={() => {
-
-                                                                    setSelectedNewMembers(
-                                                                        (prev) =>
-                                                                            isSelected
-                                                                                ? prev.filter(
-                                                                                    (id) =>
-                                                                                        id !==
-                                                                                        user.userId
-                                                                                )
-                                                                                : [
-                                                                                    ...prev,
-                                                                                    user.userId,
-                                                                                ]
-                                                                    );
-
-                                                                }}
-                                                            />
-
-                                                            <span>
-                                                                {user.userId}
-                                                            </span>
-
-                                                        </label>
-
-                                                    );
-
-                                                }
-                                            )
-
-                                        )}
-
-                                    </div>
-
-
-                                    <div className="announcement-add-member-actions">
-
-                                        <button
-                                            type="button"
-                                            className="announcement-add-member-cancel"
-                                            onClick={() => {
-                                                setShowAddMember(false);
-                                                setSelectedNewMembers([]);
-                                            }}
-                                            disabled={addingMembers}
-                                        >
-                                            Cancel
-                                        </button>
-
-
-                                        <button
-                                            type="button"
-                                            className="announcement-add-member-confirm"
-                                            onClick={handleAddPortalMembers}
-                                            disabled={
-                                                addingMembers ||
-                                                selectedNewMembers.length === 0
-                                            }
-                                        >
-                                            {addingMembers
-                                                ? "Adding..."
-                                                : `Add ${
-                                                    selectedNewMembers.length
-                                                } Member${
-                                                    selectedNewMembers.length !== 1
-                                                        ? "s"
-                                                        : ""
-                                                }`
-                                            }
-                                        </button>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        )}                  
-
-
-                        {showMembers && (
-
-                            <div className="announcement-portal-member-list">
-
-
-                                {membersLoading ? (
-
-                                    <p>
-                                        Loading members...
-                                    </p>
-
-                                ) : portalMembers.length === 0 ? (
-
-                                    <p>
-                                        No members found.
-                                    </p>
-
-                                ) : (
-
-                                    portalMembers.map(
-                                        (member) => {
-
-                                            const isHost =
-                                                member.userId ===
-                                                selectedPortal.createdBy;
-
-
-                                            const canRemove =
-                                                selectedPortal.role ===
-                                                    "host" &&
-                                                !isHost;
-
-
-                                            return (
-
-                                                <div
-                                                    key={
-                                                        member._id
-                                                    }
-                                                    className="announcement-portal-member"
-                                                >
-
-
-                                                    <div className="announcement-member-info">
-
-                                                        <strong>
-                                                            {
-                                                                member.userId
-                                                            }
-                                                        </strong>
-
-                                                    </div>
-
-
-                                                    <div className="announcement-member-actions">
-
-                                                        {selectedPortal?.role === "host" &&
-                                                            member.userId !== selectedPortal.createdBy &&
-                                                            member.userId !== userId ? (
-
-                                                                <select
-                                                                    className="announcement-member-role-select"
-                                                                    value={member.role}
-                                                                    onChange={(e) =>
-                                                                        handleRoleChange(
-                                                                            member.userId,
-                                                                            e.target.value
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <option value="participant">
-                                                                        Participant
-                                                                    </option>
-
-                                                                    <option value="host">
-                                                                        Host
-                                                                    </option>
-                                                                </select>
-
-                                                            ) : (
-
-                                                                <span
-                                                                    className={`announcement-member-role ${member.role}`}
-                                                                >
-                                                                    {member.role}
-                                                                </span>
-
-                                                            )}
-
-
-                                                        {canRemove && (
-
-                                                            <button
-                                                                type="button"
-                                                                className="announcement-member-remove"
-                                                                onClick={() =>
-                                                                    handleRemovePortalMember(
-                                                                        member
-                                                                    )
-                                                                }
-                                                            >
-                                                                Remove
-                                                            </button>
-
-                                                        )}
-
-                                                    </div>
-
-
-                                                </div>
-
-                                            );
-
-                                        }
-                                    )
-
-                                )}
-
-                            </div>
-
-                        )}
-
-                    </div>
-
-
-                    {/* =================================
-                        Selected portal header
-                    ================================= */}
-
-                    <div className="announcement-content-header">
-
-                        <div>
-
-                            <div className="announcement-selected-portal-title-row">
-
-                                <h3>
-                                    {
-                                        selectedPortal.name
-                                    }
-                                </h3>
-
-
-                                <span
-                                    className={`announcement-role-badge ${selectedPortal.role}`}
-                                >
-                                    {
-                                        selectedPortal.role
-                                    }
-                                </span>
-
-                            </div>
-
-
-                            {selectedPortal.description && (
-
-                                <p>
-                                    {
-                                        selectedPortal.description
-                                    }
-                                </p>
-
-                            )}
-
-                        </div>
-
-
-                        {/* Host/Admin can create announcements */}
-
-                        {(selectedPortal.role === "host" ||
-                            selectedPortal.role === "admin") && (
-
-                            <button
-                                type="button"
-                                className="announcement-create-button"
-                                onClick={() =>
-                                    setIsCreateAnnouncementOpen(
-                                        true
-                                    )
-                                }
-                            >
-                                + Announcement
-                            </button>
-                            
-
-                        )}
-                        {selectedPortal?.role === "host"  && (
-                            <button
-                                type="button"
-                                className="announcement-delete-portal-button"
-                                onClick={handleDeletePortal}
-                            >
-                                Delete Portal
-                            </button>
-                        )}
-
-                    </div>
-
-
-                    {/* =================================
-                        Announcements
-                    ================================= */}
-
-                    <AnnouncementList
-                        announcements={
-                            announcements
-                        }
-                        selectedPortal={
-                            selectedPortal
-                        }
-                        loading={
-                            loadingAnnouncements
-                        }
+                    <PortalAnnouncements
+                        announcements={announcements}
+                        selectedPortal={selectedPortal}
+                        loading={loadingAnnouncements}
                         onDelete={
                             handleDeleteAnnouncement
                         }
@@ -1674,6 +1791,7 @@ function AnnouncementPortal({
                         false
                     )
                 }
+                
                 onCreate={
                     handleCreateAnnouncement
                 }

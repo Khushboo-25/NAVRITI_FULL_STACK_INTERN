@@ -182,3 +182,87 @@
     border-right-color: var(--border);
   }
 } */
+
+* {
+  box-sizing: border-box;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+button,
+input,
+textarea,
+select {
+  border-radius: 0;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.06em;
+}
+
+button {
+  border: 3px solid #243b53;
+  background: #f6bd60;
+  color: #102a43;
+  box-shadow: 5px 5px 0 #d1495b;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #dce8f2;
+  color: #102a43;
+}
+
+.host-demo-shell {
+  min-height: 100vh;
+  padding: 48px clamp(20px, 7vw, 100px) 120px;
+  background: radial-gradient(circle at 12% 15%, rgba(209, 73, 91, 0.18), transparent 24%), #dce8f2;
+}
+
+.host-demo-header,
+.host-demo-stage {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.host-demo-header {
+  padding-bottom: 28px;
+  border-bottom: 4px solid #243b53;
+}
+
+.host-demo-header > span,
+.host-demo-stage-label {
+  color: #d1495b;
+  font: 700 11px/1.2 "Courier New", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.host-demo-header h1 {
+  margin: 10px 0;
+  font-size: clamp(38px, 7vw, 86px);
+  line-height: 0.9;
+}
+
+.host-demo-header p {
+  margin: 0;
+  font: 14px/1.6 "Courier New", monospace;
+}
+
+.host-demo-stage {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  margin-top: 34px;
+  padding: 24px;
+  border: 3px solid #243b53;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+@media (max-width: 560px) {
+  .host-demo-shell {
+    padding: 28px 14px 90px;
+  }
+
+  .host-demo-stage {
+    padding: 12px 4px;
+  }
+}

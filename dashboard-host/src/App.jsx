@@ -2,9 +2,10 @@ import "./App.css";
 import CommunicationWidget from "@rtc-widget/react";
 import "@rtc-widget/react/style.css";
 const currentUser = {
-  userId: "user-13",
-  displayName: "Khushboo13",
-  role: "admin",
+  userId: "user-10",
+    displayName: "Rahul",
+    role: "user",
+  
 };
 
 const users = [
@@ -35,9 +36,9 @@ const users = [
   },
 
   {
-    userId: "user-10",
-    displayName: "Rahul",
-    role: "user",
+    userId: "user-13",
+    displayName: "Khushboo13",
+    role: "admin",
   },
 
   {
@@ -111,7 +112,7 @@ const users = [
 
 function App() {
   return (
-    <>
+    <main className="host-dashboard-shell">
       <header className="header">
         <h1>Dashboard Host Application</h1>
       </header>
@@ -143,7 +144,7 @@ function App() {
         users={users}
         serverUrl="http://localhost:5000"
       />
-    </>
+    </main>
   );
 }
 

@@ -27,12 +27,6 @@ const users = [
   },
 
   {
-    userId: "user-8",
-    displayName: "Khushboo",
-    role: "user",
-  },
-
-  {
     userId: "user-9",
     displayName: "Prince",
     role: "user",
@@ -115,11 +109,21 @@ const users = [
 
 function App() {
     return (
+    <main className="host-demo-shell">
+      <header className="host-demo-header">
+        <span>Customer workspace</span>
+        <h1>Demo Host App</h1>
+        <p>Testing the communication widget inside a styled host page.</p>
+      </header>
+      <section className="host-demo-stage">
+        <div className="host-demo-stage-label">Embedded widget</div>
         <CommunicationWidget
-            currentUser={currentUser}
-            users={users}
-            serverUrl="http://localhost:5000"
+          currentUser={currentUser}
+          users={users}
+          serverUrl="http://localhost:5000"
         />
+      </section>
+    </main>
     );
 }
 

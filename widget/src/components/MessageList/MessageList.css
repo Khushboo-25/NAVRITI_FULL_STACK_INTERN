@@ -6,9 +6,9 @@
     overflow-y: auto;
     overflow-x: hidden;
 
-    padding: 15px;
+    padding: 14px 16px;
 
-    background: #f8f9fd;
+    background: #efeae2;
 
     scroll-behavior: smooth;
 }
@@ -27,7 +27,7 @@
 }
 
 .rtc-message-list::-webkit-scrollbar-thumb {
-    background: #d8dbea;
+    background: #c4d5c8;
 
     border-radius: 10px;
 
@@ -35,5 +35,5 @@
 }
 
 .rtc-message-list::-webkit-scrollbar-thumb:hover {
-    background: #bfc3d8;
+    background: #9fbaaa;
 }

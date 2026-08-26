@@ -92,4 +92,40 @@ router.post(
     }
 );
 
+router.delete(
+    "/upload",
+    async (req, res) => {
+        const {
+            publicId,
+            resourceType = "image",
+        } = req.body || {};
+
+        if (!publicId) {
+            return res.status(400).json({
+                message: "publicId is required",
+            });
+        }
+
+        try {
+            await cloudinary.uploader.destroy(
+                publicId,
+                { resource_type: resourceType }
+            );
+
+            return res.status(200).json({
+                message: "File cleanup completed",
+            });
+        } catch (error) {
+            console.error(
+                "Cloudinary cleanup error:",
+                error
+            );
+
+            return res.status(500).json({
+                message: "File cleanup failed",
+            });
+        }
+    }
+);
+
 export default router;

@@ -220,7 +220,11 @@
 
     background: transparent;
 
-    font-size: 11px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 13px;
 
     color: #6366f1;
 
@@ -268,11 +272,13 @@
 
     color: #c05a58;
 
-    font-size: 11px;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
 
-    padding: 4px 6px;
+    padding: 0;
 
-    border-radius: 5px;
+    border-radius: 50%;
 
     cursor: pointer;
 

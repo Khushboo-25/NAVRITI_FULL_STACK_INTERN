@@ -22,6 +22,8 @@ import "./WidgetContainer.css";
 
 import { initializeConfig } from "../../services/config";
 import { initializeApi } from "../../services/api";
+import ThemeSwitcher from "../ThemeSwitcher/ThemeSwitcher";
+import "../ThemeSwitcher/ThemeSwitcher.css";
 
 const getLastMessagePreview = (message) => {
     if (!message) {
@@ -45,11 +47,42 @@ function WidgetContainer({
     currentUser,
     users,
     serverUrl,
+    onClose,
+    theme = "light",
+    onThemeChange,
 }) {
     const senderId = currentUser?.userId;
 
-    const isMobile =
-        window.innerWidth <= 768;
+    const [isMobile, setIsMobile] =
+        useState(() =>
+            window.matchMedia(
+                "(max-width: 768px)"
+            ).matches
+        );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia(
+            "(max-width: 768px)"
+        );
+
+        const handleViewportChange = (
+            event
+        ) => {
+            setIsMobile(event.matches);
+        };
+
+        mediaQuery.addEventListener(
+            "change",
+            handleViewportChange
+        );
+
+        return () => {
+            mediaQuery.removeEventListener(
+                "change",
+                handleViewportChange
+            );
+        };
+    }, []);
 
 
     /*
@@ -110,8 +143,29 @@ function WidgetContainer({
 
     const loadRequestRef = useRef(0);
 
+    const conversationLoadRequestRef =
+        useRef(0);
+
     const [activeSection, setActiveSection] =
     useState("chat");
+
+    useEffect(() => {
+        return () => {
+            const activeConversationId =
+                selectedConversationRef.current;
+
+            if (!activeConversationId) {
+                return;
+            }
+
+            getSocket().emit(
+                "leaveConversation",
+                activeConversationId
+            );
+
+            selectedConversationRef.current = null;
+        };
+    }, []);
 
 
     /*
@@ -131,7 +185,7 @@ function WidgetContainer({
 
         initializeConfig(serverUrl);
         initializeApi();
-        initializeSocket();
+        initializeSocket(senderId);
 
     }, [serverUrl]);
 
@@ -159,21 +213,32 @@ function WidgetContainer({
 
 
         /*
-         * ------------------------------------------------
-         * Load user's conversations
-         * ------------------------------------------------
-         */
+        * ------------------------------------------------
+        * Load user's conversations
+        * ------------------------------------------------
+        */
 
         const initializeWidget = async () => {
+            const requestId =
+                ++conversationLoadRequestRef.current;
+
             try {
                 const userConversations =
                     await getUserConversations(
                         senderId
                     );
 
+                if (
+                    requestId !==
+                    conversationLoadRequestRef.current
+                ) {
+                    return;
+                }
+
                 setConversations(
                     userConversations
                 );
+
                 const mentionedIds =
                     userConversations
                         .filter(
@@ -189,30 +254,6 @@ function WidgetContainer({
                     new Set(mentionedIds)
                 );
 
-
-                /*
-                 * Desktop:
-                 * automatically select first conversation.
-                 */
-
-                if (
-                    userConversations.length > 0 &&
-                    !isMobile
-                ) {
-                    const firstConversation =
-                        userConversations[0];
-
-                    const firstConversationId =
-                        firstConversation.conversationId.toString();
-
-                    selectedConversationRef.current =
-                        firstConversationId;
-
-                    setSelectedConversation(
-                        firstConversation
-                    );
-                }
-
             } catch (error) {
                 console.error(
                     "Failed to load conversations:",
@@ -222,7 +263,39 @@ function WidgetContainer({
         };
 
 
+        /*
+        * ------------------------------------------------
+        * New conversation
+        * ------------------------------------------------
+        */
 
+        const handleConversationUpdated = () => {
+            getUserConversations(senderId)
+                .then((updatedConversations) => {
+                    setConversations(updatedConversations);
+
+                    const mentionedIds =
+                        updatedConversations
+                            .filter(
+                                (conversation) =>
+                                    conversation.hasMention
+                            )
+                            .map(
+                                (conversation) =>
+                                    conversation.conversationId.toString()
+                            );
+
+                    setMentionedConversations(
+                        new Set(mentionedIds)
+                    );
+                })
+                .catch((error) => {
+                    console.error(
+                        "Failed to refresh conversations:",
+                        error
+                    );
+                });
+        };
 
         /*
          * ------------------------------------------------
@@ -614,9 +687,15 @@ function WidgetContainer({
          */
 
         socket.on(
+            "conversationCreated",
+            handleConversationUpdated
+        );
+
+        socket.on(
             "newMessage",
             handleNewMessage
         );
+
 
         socket.on(
             "messageUpdated",
@@ -638,6 +717,12 @@ function WidgetContainer({
          */
 
         return () => {
+            conversationLoadRequestRef.current++;
+
+            socket.off(
+                "conversationCreated",
+                handleConversationUpdated
+            );
 
             socket.off(
                 "newMessage",
@@ -892,15 +977,31 @@ function WidgetContainer({
 
         // File message
         if (fileData) {
-            socket.emit("sendMessage", {
-                conversationId,
-                senderId,
-                content: "",
-                messageType: fileData.messageType,
-                attachment: fileData.attachment,
-            });
+            return new Promise((resolve, reject) => {
+                socket.emit(
+                    "sendMessage",
+                    {
+                        conversationId,
+                        senderId,
+                        content: "",
+                        messageType: fileData.messageType,
+                        attachment: fileData.attachment,
+                    },
+                    (response) => {
+                        if (response?.ok) {
+                            resolve(response.message);
+                            return;
+                        }
 
-            return;
+                        reject(
+                            new Error(
+                                response?.message ||
+                                "Message could not be sent"
+                            )
+                        );
+                    }
+                );
+            });
         }
 
         // Text message
@@ -1234,7 +1335,20 @@ function WidgetContainer({
      */
 
     return (
-        <div className="rtc-widget-container">
+        <div
+            className="rtc-widget-container"
+            data-theme={theme}
+        >
+
+            <button
+                type="button"
+                className="rtc-widget-close-button"
+                onClick={onClose}
+                aria-label="Close communication widget"
+                title="Close widget"
+            >
+                ×
+            </button>
 
             {/* ================================
                 Conversation Sidebar
@@ -1266,6 +1380,11 @@ function WidgetContainer({
                                 conversations.length
                             }
                         </span>
+
+                        <ThemeSwitcher
+                            theme={theme}
+                            onChange={onThemeChange}
+                        />
 
                     </div>
 
@@ -1368,6 +1487,16 @@ function WidgetContainer({
                         }
                         users={users}
                         onBack={() => {
+
+                            const activeConversationId =
+                                selectedConversationRef.current;
+
+                            if (activeConversationId) {
+                                getSocket().emit(
+                                    "leaveConversation",
+                                    activeConversationId
+                                );
+                            }
 
                             setShowChat(false);
 

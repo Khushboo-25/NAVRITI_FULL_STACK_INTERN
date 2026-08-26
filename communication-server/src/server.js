@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import connectDB from "./config/db.js";
 import socketHandler from './socket/socketHandler.js';
 import {Server} from "socket.io";
+import {
+    setAnnouncementSocket,
+} from "./controllers/announcementPortalController.js";
 
 dotenv.config();
 const httpServer = http.createServer(app);
@@ -17,6 +20,8 @@ const io = new Server(httpServer,{
         methods: ["GET", "POST"]
     }
 });
+
+setAnnouncementSocket(io);
 socketHandler(io);
 await connectDB();
 

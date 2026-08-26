@@ -20,7 +20,6 @@ function ChatWindow({
     onEditMessage,
     onDeleteMessage,
 }) {
-
     const [showMembers, setShowMembers] =
         useState(false);
 
@@ -40,6 +39,18 @@ function ChatWindow({
     /*
      * -----------------------------------------
      * Find members of current conversation
+     *
+     * Backend now returns:
+     *
+     * participants: [
+     *     {
+     *         userId,
+     *         displayName
+     *     }
+     * ]
+     *
+     * So compare participant.userId
+     * instead of participant directly.
      * -----------------------------------------
      */
 
@@ -47,8 +58,8 @@ function ChatWindow({
         users.filter((user) =>
             selectedConversation?.participants?.some(
                 (participantId) =>
-                    participantId.toString() ===
-                    user.userId.toString()
+                    participantId?.toString() ===
+                    user.userId?.toString()
             )
         );
 
@@ -132,7 +143,8 @@ function ChatWindow({
                 <div className="rtc-chat-details">
 
                     <h2>
-                        {selectedConversation.displayName}
+                        {selectedConversation.displayName ||
+                            "Unknown"}
                     </h2>
 
                     <p>

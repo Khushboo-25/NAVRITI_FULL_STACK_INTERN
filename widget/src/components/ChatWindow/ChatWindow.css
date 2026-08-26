@@ -8,7 +8,7 @@
 
     flex: 1;
 
-    background: #ffffff;
+    background: #e7e2db;
 
     color: #252832;
 }
@@ -28,9 +28,9 @@
 
     padding: 14px 20px;
 
-    border-bottom: 1px solid #e7e9f0;
+    border-bottom: 1px solid #e4e0ed;
 
-    background: #fafbff;
+    background: #f5f3f8;
 
     box-shadow:
         0 1px 4px rgba(30, 35, 50, 0.04);
@@ -51,11 +51,7 @@
 
     border-radius: 50%;
 
-    background: linear-gradient(
-        135deg,
-        #6366f1,
-        #818cf8
-    );
+    background: #55408f;
 
     color: white;
 
@@ -67,7 +63,7 @@
     font-weight: 600;
 
     box-shadow:
-        0 4px 10px rgba(99, 102, 241, 0.20);
+        0 4px 10px rgba(85, 64, 143, 0.20);
 
     transition:
         transform 0.2s ease,
@@ -78,7 +74,7 @@
     transform: scale(1.05);
 
     box-shadow:
-        0 6px 14px rgba(99, 102, 241, 0.26);
+        0 6px 14px rgba(85, 64, 143, 0.26);
 }
 
 
@@ -96,7 +92,7 @@
     font-size: 18px;
     font-weight: 600;
 
-    color: #252832;
+    color: #2d2840;
 
     white-space: nowrap;
     overflow: hidden;
@@ -115,34 +111,6 @@
 
 
 /* ================================
-   Messages
-================================ */
-
-.rtc-chat-messages {
-    flex: 1;
-
-    min-height: 0;
-
-    overflow: hidden;
-
-    background: #ffffff;
-}
-
-
-/* ================================
-   Input
-================================ */
-
-.rtc-chat-input-area {
-    flex-shrink: 0;
-
-    border-top: 1px solid #e7e9f0;
-
-    background: #fafbff;
-}
-
-
-/* ================================
    Empty Chat
 ================================ */
 
@@ -155,7 +123,7 @@
     background:
         radial-gradient(
             circle at center,
-            #f5f6ff 0%,
+            #e8e5f0 0%,
             #ffffff 60%
         );
 }

@@ -23,6 +23,8 @@ const ALLOWED_FILE_TYPES = [
     "application/zip",
     "application/x-zip-compressed",
 ];
+
+
 function ChatInput({
     message,
     setMessage,
@@ -37,7 +39,8 @@ function ChatInput({
 
     const [mentionText, setMentionText] =
         useState("");
-    const [isUploading, setIsUploading] = 
+
+    const [isUploading, setIsUploading] =
         useState(false);
 
 
@@ -68,6 +71,14 @@ function ChatInput({
             setShowMentions(false);
         }
     };
+
+
+    /*
+     * --------------------------------------------
+     * Handle file select
+     * --------------------------------------------
+     */
+
     const handleFileSelect = async (e) => {
         const file = e.target.files[0];
 
@@ -97,6 +108,7 @@ function ChatInput({
             setIsUploading(true);
 
             const formData = new FormData();
+
             formData.append("file", file);
 
             const response = await fetch(
@@ -111,25 +123,74 @@ function ChatInput({
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "File upload failed"
+                    data.message ||
+                    "File upload failed"
                 );
             }
 
-            sendMessage({
-                messageType: "file",
-                content: "",
-                attachment: {
-                    fileName: data.file.originalName,
-                    fileUrl: data.file.fileUrl,
-                    fileType: data.file.fileType,
-                    fileSize: data.file.fileSize,
-                    publicId: data.file.publicId,
-                    sourceType: data.file.resourceType,
-                },
-            });
+            const attachment = {
+                fileName:
+                    data.file.originalName,
+
+                fileUrl:
+                    data.file.fileUrl,
+
+                fileType:
+                    data.file.fileType,
+
+                fileSize:
+                    data.file.fileSize,
+
+                publicId:
+                    data.file.publicId,
+
+                resourceType:
+                    data.file.resourceType,
+            };
+
+            try {
+                await sendMessage({
+                    messageType: "file",
+                    content: "",
+                    attachment,
+                });
+
+            } catch (sendError) {
+
+                await fetch(
+                    `${serverUrl}/api/files/upload`,
+                    {
+                        method: "DELETE",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body: JSON.stringify({
+                            publicId:
+                                attachment.publicId,
+
+                            resourceType:
+                                attachment.resourceType,
+                        }),
+                    }
+                ).catch((cleanupError) => {
+                    console.error(
+                        "Uploaded file cleanup error:",
+                        cleanupError
+                    );
+                });
+
+                throw sendError;
+            }
 
         } catch (error) {
-            console.error("File upload error:", error);
+
+            console.error(
+                "File upload error:",
+                error
+            );
 
             alert(
                 error.message ||
@@ -137,33 +198,52 @@ function ChatInput({
             );
 
         } finally {
+
             setIsUploading(false);
+
             e.target.value = "";
         }
     };
 
+
     /*
      * --------------------------------------------
      * Filter users for mention
+     *
+     * Backend participants are now:
+     *
+     * {
+     *     userId,
+     *     displayName
+     * }
+     *
+     * So we compare participant.userId.
      * --------------------------------------------
      */
 
     const participantIds =
-    selectedConversation?.participants || [];
+        selectedConversation?.participants || [];
+
 
     const filteredUsers = users
+
+        // Only users belonging to this conversation
         .filter((user) =>
             participantIds.some(
-                (id) =>
-                    id.toString() ===
-                    user.userId.toString()
+                (participantId) =>
+                    participantId?.toString() ===
+                    user.userId?.toString()
             )
         )
+
+        // Don't show current user
         .filter(
             (user) =>
-                user.userId.toString() !==
-                currentUser?.userId.toString()
+                user.userId?.toString() !==
+                currentUser?.userId?.toString()
         )
+
+        // Match display name
         .filter((user) =>
             user.displayName
                 ?.toLowerCase()
@@ -176,6 +256,7 @@ function ChatInput({
             filteredUsers,
         });
 
+
     /*
      * --------------------------------------------
      * Select mention
@@ -183,7 +264,8 @@ function ChatInput({
      */
 
     const handleMentionSelect = (user) => {
-        const words = message.split(/\s/);
+        const words =
+            message.split(/\s/);
 
         words[words.length - 1] =
             `@${user.displayName}`;
@@ -245,9 +327,11 @@ function ChatInput({
 
             {showMentions &&
                 filteredUsers.length > 0 && (
+
                     <div className="rtc-mention-list">
 
                         {filteredUsers.map((user) => (
+
                             <button
                                 key={user.userId}
                                 type="button"
@@ -260,11 +344,15 @@ function ChatInput({
                             >
                                 @{user.displayName}
                             </button>
+
                         ))}
 
                     </div>
                 )}
+
+
             {/* File Input */}
+
             <input
                 type="file"
                 id="rtc-file-input"
@@ -272,10 +360,13 @@ function ChatInput({
                 onChange={handleFileSelect}
             />
 
+
             <label
                 htmlFor="rtc-file-input"
                 className={`rtc-file-button ${
-                    isUploading ? "rtc-file-button-disabled" : ""
+                    isUploading
+                        ? "rtc-file-button-disabled"
+                        : ""
                 }`}
                 title={
                     isUploading
@@ -285,7 +376,9 @@ function ChatInput({
             >
                 {isUploading ? "⏳" : "📎"}
             </label>
-            {/* text Input */}
+
+
+            {/* Text Input */}
 
             <input
                 className="rtc-chat-input"
@@ -299,12 +392,15 @@ function ChatInput({
 
             {/* Send */}
 
-            <button 
-                type="button" 
-                className="rtc-send-button" 
-                onClick={handleSend} 
-                disabled={!message.trim() || isUploading} 
-                aria-label="Send message" 
+            <button
+                type="button"
+                className="rtc-send-button"
+                onClick={handleSend}
+                disabled={
+                    !message.trim() ||
+                    isUploading
+                }
+                aria-label="Send message"
             >
                 {isUploading ? "..." : "➤"}
             </button>

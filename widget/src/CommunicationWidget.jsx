@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import root from "react-shadow";
 import WidgetContainer from "./components/WidgetContainer/WidgetContainer";
 import { initializeConfig } from "./services/config";
 import { initializeApi } from "./services/api";
 import { initializeSocket } from "./services/socket";
-import "./index.css";
+import shadowStyles from "./shadow.css?inline";
 
 function CommunicationWidget({
     currentUser,
@@ -15,6 +16,21 @@ function CommunicationWidget({
     defaultOpen = false,
 }) {
     const [open, setOpen] = useState(defaultOpen);
+    const [theme, setTheme] = useState(() => {
+        try {
+            return localStorage.getItem("rtc-widget-theme") || "light";
+        } catch {
+            return "light";
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem("rtc-widget-theme", theme);
+        } catch {
+            // Theme persistence is optional for embedded hosts.
+        }
+    }, [theme]);
 
     useEffect(() => {
         if (!serverUrl) {
@@ -38,7 +54,8 @@ function CommunicationWidget({
     };
 
     return (
-        <>
+        <root.div className="rtc-widget-shadow">
+            <style>{shadowStyles}</style>
             <button
                 type="button"
                 className="rtc-launcher"
@@ -59,10 +76,12 @@ function CommunicationWidget({
                         users={users}
                         serverUrl={serverUrl}
                         onClose={closeWidget}
+                        theme={theme}
+                        onThemeChange={setTheme}
                     />
                 </div>
             )}
-        </>
+        </root.div>
     );
 }
 

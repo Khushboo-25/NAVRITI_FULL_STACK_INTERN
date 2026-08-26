@@ -1,3 +1,4 @@
+import "./App.css";
 import CommunicationWidget from "@rtc-widget/react";
 import "@rtc-widget/react/style.css";
 
@@ -64,15 +65,26 @@ const users = [
 
 function App() {
     return (
-        <>
-            {/* Host Application UI */}
-
-            <CommunicationWidget
-                currentUser={currentUser}
-                users={users}
-                serverUrl="http://localhost:5000"
-            />
-        </>
+        <main className="host-store-shell">
+            <header className="host-store-header">
+                <div>
+                    <span>Northstar Commerce</span>
+                    <h1>Store Operations</h1>
+                </div>
+                <button type="button">Account</button>
+            </header>
+            <section className="host-store-content">
+                <article className="host-store-banner">
+                    <span>Host application styling</span>
+                    <h2>Support, updates, and team chat in one place.</h2>
+                </article>
+                <CommunicationWidget
+                    currentUser={currentUser}
+                    users={users}
+                    serverUrl="http://localhost:5000"
+                />
+            </section>
+        </main>
     );
 }
 
