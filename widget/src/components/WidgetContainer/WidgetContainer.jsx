@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 import {
     initializeSocket,
@@ -9,6 +9,7 @@ import ChatWindow from "../ChatWindow/ChatWindow";
 import ConversationList from "../ConversationList/ConversationList";
 import NewChatModal from "../NewChatModal/NewChatModal";
 import NewGroupModal from "../NewGroupModal/NewGroupModal";
+
 import { getMessages } from "../../services/messageService";
 import AnnouncementPortal from "../AnnouncementPortal/AnnouncementPortal";
 
@@ -22,10 +23,28 @@ import "./WidgetContainer.css";
 
 import { initializeConfig } from "../../services/config";
 import { initializeApi } from "../../services/api";
+
 import ThemeSwitcher from "../ThemeSwitcher/ThemeSwitcher";
 import "../ThemeSwitcher/ThemeSwitcher.css";
 
+
+/*
+ * =========================================================
+ * Helpers
+ * =========================================================
+ */
+
+const normalizeId = (id) => {
+    if (id === null || id === undefined) {
+        return null;
+    }
+
+    return id.toString();
+};
+
+
 const getLastMessagePreview = (message) => {
+
     if (!message) {
         return "";
     }
@@ -36,12 +55,21 @@ const getLastMessagePreview = (message) => {
 
     if (message.messageType === "file") {
         return `📎 ${
-            message.attachment?.fileName || "File"
+            message.attachment?.fileName ||
+            message.attachment?.originalName ||
+            "File"
         }`;
     }
 
     return message.content || "";
 };
+
+
+/*
+ * =========================================================
+ * Widget Container
+ * =========================================================
+ */
 
 function WidgetContainer({
     currentUser,
@@ -51,7 +79,15 @@ function WidgetContainer({
     theme = "light",
     onThemeChange,
 }) {
+
     const senderId = currentUser?.userId;
+
+
+    /*
+     * =========================================================
+     * State
+     * =========================================================
+     */
 
     const [isMobile, setIsMobile] =
         useState(() =>
@@ -60,173 +96,178 @@ function WidgetContainer({
             ).matches
         );
 
-    useEffect(() => {
-        const mediaQuery = window.matchMedia(
-            "(max-width: 768px)"
-        );
-
-        const handleViewportChange = (
-            event
-        ) => {
-            setIsMobile(event.matches);
-        };
-
-        mediaQuery.addEventListener(
-            "change",
-            handleViewportChange
-        );
-
-        return () => {
-            mediaQuery.removeEventListener(
-                "change",
-                handleViewportChange
-            );
-        };
-    }, []);
-
-
-    /*
-     * --------------------------------------------------
-     * State
-     * --------------------------------------------------
-     */
 
     const [message, setMessage] =
         useState("");
 
+
     const [messages, setMessages] =
         useState([]);
+
 
     const [conversationId, setConversationId] =
         useState(null);
 
+
     const [conversations, setConversations] =
         useState([]);
+
 
     const [
         selectedConversation,
         setSelectedConversation,
     ] = useState(null);
 
+
     const [
         mentionedConversations,
         setMentionedConversations,
     ] = useState(new Set());
 
+
     const [searchText, setSearchText] =
         useState("");
+
 
     const [isChatModalOpen, setIsChatModalOpen] =
         useState(false);
 
+
     const [isGroupModalOpen, setIsGroupModalOpen] =
         useState(false);
+
 
     const [showChat, setShowChat] =
         useState(false);
 
 
+    const [activeSection, setActiveSection] =
+        useState("chat");
+
+
     /*
-     * --------------------------------------------------
+     * =========================================================
      * Refs
-     * --------------------------------------------------
+     * =========================================================
      */
 
     const selectedConversationRef =
         useRef(null);
 
-    /*
-     * Used to ignore stale getMessages()
-     * responses when user switches conversations
-     * quickly.
-     */
 
-    const loadRequestRef = useRef(0);
+    const loadRequestRef =
+        useRef(0);
+
 
     const conversationLoadRequestRef =
         useRef(0);
 
-    const [activeSection, setActiveSection] =
-    useState("chat");
+
+    /*
+     * =========================================================
+     * Mobile viewport
+     * =========================================================
+     */
 
     useEffect(() => {
-        return () => {
-            const activeConversationId =
-                selectedConversationRef.current;
 
-            if (!activeConversationId) {
-                return;
-            }
-
-            getSocket().emit(
-                "leaveConversation",
-                activeConversationId
+        const mediaQuery =
+            window.matchMedia(
+                "(max-width: 768px)"
             );
 
-            selectedConversationRef.current = null;
+
+        const handleViewportChange = (
+            event
+        ) => {
+
+            setIsMobile(
+                event.matches
+            );
+
         };
+
+
+        mediaQuery.addEventListener(
+            "change",
+            handleViewportChange
+        );
+
+
+        return () => {
+
+            mediaQuery.removeEventListener(
+                "change",
+                handleViewportChange
+            );
+
+        };
+
     }, []);
 
 
     /*
-     * --------------------------------------------------
+     * =========================================================
      * Initialize API + Socket
-     * --------------------------------------------------
+     * =========================================================
      */
 
     useEffect(() => {
-        if (!serverUrl) {
-            console.error(
-                "CommunicationWidget: serverUrl is required"
-            );
 
+        if (!serverUrl || !senderId) {
             return;
         }
 
-        initializeConfig(serverUrl);
-        initializeApi();
-        initializeSocket(senderId);
 
-    }, [serverUrl]);
+        initializeConfig(
+            serverUrl
+        );
+
+
+        initializeApi();
+
+
+        initializeSocket(
+            senderId
+        );
+
+    }, [
+        serverUrl,
+        senderId,
+    ]);
 
 
     /*
-     * --------------------------------------------------
-     * Load conversations + Socket listeners
-     * --------------------------------------------------
+     * =========================================================
+     * Refresh conversations from Cassandra
+     *
+     * Cassandra is source of truth.
+     * =========================================================
      */
 
-    useEffect(() => {
-        if (!senderId) {
-            return;
-        }
+    const refreshConversations =
+        useCallback(async () => {
 
-        const socket = getSocket();
-
-        if (!socket) {
-            console.error(
-                "Socket is not initialized"
-            );
-
-            return;
-        }
+            if (!senderId) {
+                return;
+            }
 
 
-        /*
-        * ------------------------------------------------
-        * Load user's conversations
-        * ------------------------------------------------
-        */
-
-        const initializeWidget = async () => {
             const requestId =
                 ++conversationLoadRequestRef.current;
 
+
             try {
-                const userConversations =
+
+                const updatedConversations =
                     await getUserConversations(
                         senderId
                     );
+
+
+                /*
+                 * Ignore stale response.
+                 */
 
                 if (
                     requestId !==
@@ -235,461 +276,556 @@ function WidgetContainer({
                     return;
                 }
 
+
                 setConversations(
-                    userConversations
+                    updatedConversations || []
                 );
 
+
+                /*
+                 * Rebuild mention badges.
+                 */
+
                 const mentionedIds =
-                    userConversations
+                    (updatedConversations || [])
                         .filter(
                             (conversation) =>
                                 conversation.hasMention
                         )
                         .map(
                             (conversation) =>
-                                conversation.conversationId.toString()
-                        );
+                                normalizeId(
+                                    conversation.conversationId
+                                )
+                        )
+                        .filter(Boolean);
+
 
                 setMentionedConversations(
-                    new Set(mentionedIds)
+                    new Set(
+                        mentionedIds
+                    )
                 );
 
             } catch (error) {
+
                 console.error(
-                    "Failed to load conversations:",
+                    "Failed to refresh conversations:",
                     error
                 );
-            }
-        };
 
-
-        /*
-        * ------------------------------------------------
-        * New conversation
-        * ------------------------------------------------
-        */
-
-        const handleConversationUpdated = () => {
-            getUserConversations(senderId)
-                .then((updatedConversations) => {
-                    setConversations(updatedConversations);
-
-                    const mentionedIds =
-                        updatedConversations
-                            .filter(
-                                (conversation) =>
-                                    conversation.hasMention
-                            )
-                            .map(
-                                (conversation) =>
-                                    conversation.conversationId.toString()
-                            );
-
-                    setMentionedConversations(
-                        new Set(mentionedIds)
-                    );
-                })
-                .catch((error) => {
-                    console.error(
-                        "Failed to refresh conversations:",
-                        error
-                    );
-                });
-        };
-
-        /*
-         * ------------------------------------------------
-         * New message
-         * ------------------------------------------------
-         */
-
-        const handleNewMessage = (
-            newMessage
-        ) => {
-            const newConversationId =
-                newMessage.conversationId?.toString();
-
-
-            if (!newConversationId) {
-                return;
             }
 
-
-            /*
-             * -----------------------------------------
-             * 1. Update conversation list
-             * -----------------------------------------
-             */
-
-            setConversations((prev) => {
-
-                const existingConversation =
-                    prev.find(
-                        (conversation) =>
-                            conversation.conversationId?.toString() ===
-                            newConversationId
-                    );
+        }, [
+            senderId,
+        ]);
 
 
-                /*
-                 * Conversation isn't currently
-                 * present in sidebar.
-                 *
-                 * Refresh from backend.
-                 */
+    /*
+     * =========================================================
+     * Update conversation from realtime message
+     *
+     * IMPORTANT:
+     * This is the primary realtime sidebar update.
+     * No API request is required for an existing conversation.
+     * =========================================================
+     */
 
-                if (!existingConversation) {
+    const updateConversationFromMessage =
+        useCallback(
+            (newMessage) => {
 
-                    getUserConversations(
-                        senderId
-                    )
-                        .then(
-                            (
-                                updatedConversations
-                            ) => {
-                                setConversations(
-                                    updatedConversations
-                                );
-                            }
-                        )
-                        .catch((error) => {
-                            console.error(
-                                "Failed to refresh conversations:",
-                                error
-                            );
-                        });
-
-                    return prev;
+                if (!newMessage) {
+                    return;
                 }
 
 
-                /*
-                 * Update latest message
-                 */
-
-                const updatedConversation = {
-                    ...existingConversation,
-
-                    lastMessage:
-                        getLastMessagePreview(
-                            newMessage
-                        ),
-
-                    lastMessageTime:
-                        newMessage.createdAt,
-                };
-
-
-                /*
-                 * Move conversation to top
-                 */
-
-                return [
-                    updatedConversation,
-
-                    ...prev.filter(
-                        (conversation) =>
-                            conversation.conversationId?.toString() !==
-                            newConversationId
-                    ),
-                ];
-            });
-
-
-            /*
-             * -----------------------------------------
-             * 2. Mention notification
-             *
-             * IMPORTANT:
-             * This must happen BEFORE the
-             * current-conversation return.
-             * -----------------------------------------
-             */
-
-            const currentUserName =
-                currentUser?.displayName?.trim();
-
-
-            if (
-                currentUserName &&
-                newMessage.content
-            ) {
-
-                /*
-                 * Escape special regex characters
-                 */
-
-                const escapedName =
-                    currentUserName.replace(
-                        /[.*+?^${}()|[\]\\]/g,
-                        "\\$&"
+                const newConversationId =
+                    normalizeId(
+                        newMessage.conversationId
                     );
 
 
-                const mentionRegex =
-                    new RegExp(
-                        `@${escapedName}(?=\\s|$|[.,!?])`,
-                        "i"
-                    );
+                if (!newConversationId) {
+                    return;
+                }
 
 
-                const wasMentioned =
-                    mentionRegex.test(
-                        newMessage.content
-                    );
+                setConversations(
+                    (prev) => {
+
+                        const existingIndex =
+                            prev.findIndex(
+                                (conversation) =>
+                                    normalizeId(
+                                        conversation.conversationId
+                                    ) ===
+                                    newConversationId
+                            );
 
 
-                console.log(
-                    "Mention check:",
-                    {
-                        message:
-                            newMessage.content,
+                        /*
+                         * -------------------------------------
+                         * Existing conversation
+                         * -------------------------------------
+                         */
 
-                        currentUser:
-                            currentUserName,
+                       if (existingIndex === -1) {
+                            return prev;
+                        }
 
-                        wasMentioned,
 
-                        conversationId:
-                            newConversationId,
+                        /*
+                         * -------------------------------------
+                         * Conversation not currently present.
+                         *
+                         * This can happen when another user
+                         * creates a new direct/group conversation.
+                         *
+                         * Fetch complete conversation metadata.
+                         * -------------------------------------
+                         */
+
+                        refreshConversations();
+
+
+                        return prev;
+
                     }
                 );
 
+            },
+            [
+                refreshConversations,
+            ]
+        );
 
-                if (wasMentioned) {
 
-                    setMentionedConversations(
-                        (prev) => {
+    /*
+     * =========================================================
+     * Socket listeners
+     * =========================================================
+     */
 
-                            const updated =
-                                new Set(prev);
+    useEffect(() => {
 
-                            updated.add(
-                                newConversationId
+        if (!senderId || !serverUrl) {
+            return;
+        }
+
+
+        let socket;
+
+
+        try {
+
+            socket =
+                getSocket();
+
+        } catch (error) {
+
+            console.error(
+                "Socket is not initialized:",
+                error
+            );
+
+            return;
+        }
+
+
+        /*
+         * Initial conversation load.
+         */
+
+        refreshConversations();
+
+
+        /*
+         * =====================================================
+         * conversationUpdated
+         * =====================================================
+         *
+         * Backend sends this event to participant personal
+         * rooms after a message is created.
+         *
+         * We DO NOT blindly call refreshConversations()
+         * because a REST response can race with newMessage
+         * and overwrite the realtime local state.
+         */
+
+        const handleConversationUpdated =
+            async (data) => {
+
+                console.log(
+                    "FRONTEND conversationUpdated RECEIVED:",
+                    data
+                );
+
+                if (!data?.conversationId) {
+                    return;
+                }
+
+                /*
+                * If backend sends latestMessage,
+                * update sidebar immediately.
+                */
+                if (data.latestMessage) {
+                    updateConversationFromMessage(
+                        data.latestMessage
+                    );
+                    return;
+                }
+
+                /*
+                * Backend currently sends only:
+                * conversationId
+                * latestMessageId
+                * participants
+                *
+                * So Cassandra se fresh conversation list
+                * load karo and WAIT for it.
+                */
+                await refreshConversations();
+            };
+
+
+        /*
+         * =====================================================
+         * newMessage
+         * =====================================================
+         */
+
+        const handleNewMessage =
+            (newMessage) => {
+
+                if (!newMessage) {
+                    return;
+                }
+
+
+                const newConversationId =
+                    normalizeId(
+                        newMessage.conversationId
+                    );
+
+
+                if (!newConversationId) {
+                    return;
+                }
+
+
+                /*
+                 * ---------------------------------------------
+                 * ALWAYS update conversation sidebar first.
+                 * ---------------------------------------------
+                 */
+
+                updateConversationFromMessage(
+                    newMessage
+                );
+
+
+                /*
+                 * ---------------------------------------------
+                 * Mention notification
+                 * ---------------------------------------------
+                 */
+
+                const currentUserName =
+                    currentUser?.displayName?.trim();
+
+
+                if (
+                    currentUserName &&
+                    newMessage.content
+                ) {
+
+                    const escapedName =
+                        currentUserName.replace(
+                            /[.*+?^${}()|[\]\\]/g,
+                            "\\$&"
+                        );
+
+
+                    const mentionRegex =
+                        new RegExp(
+                            `@${escapedName}(?=\\s|$|[.,!?])`,
+                            "i"
+                        );
+
+
+                    const wasMentioned =
+                        mentionRegex.test(
+                            newMessage.content
+                        );
+
+
+                    if (
+                        wasMentioned
+                    ) {
+
+                        setMentionedConversations(
+                            (prev) => {
+
+                                const updated =
+                                    new Set(prev);
+
+
+                                updated.add(
+                                    newConversationId
+                                );
+
+
+                                return updated;
+
+                            }
+                        );
+
+                    }
+
+                }
+
+
+                /*
+                 * ---------------------------------------------
+                 * Only update currently opened conversation.
+                 * ---------------------------------------------
+                 */
+
+                const currentConversationId =
+                    normalizeId(
+                        selectedConversationRef.current
+                    );
+
+
+                if (
+                    currentConversationId !==
+                    newConversationId
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * ---------------------------------------------
+                 * Prevent duplicate messages.
+                 * ---------------------------------------------
+                 */
+
+                setMessages(
+                    (prev) => {
+
+                        const newMessageId =
+                            normalizeId(
+                                newMessage._id
                             );
 
-                            return updated;
+
+                        const exists =
+                            prev.some(
+                                (msg) =>
+                                    normalizeId(
+                                        msg._id
+                                    ) ===
+                                    newMessageId
+                            );
+
+
+                        if (exists) {
+                            return prev;
                         }
-                    );
-                }
-            }
 
 
-            /*
-             * -----------------------------------------
-             * 3. Update currently opened chat
-             * -----------------------------------------
-             */
-
-            const currentConversationId =
-                selectedConversationRef.current?.toString();
+                        const next = [
+                            ...prev,
+                            newMessage,
+                        ];
 
 
-            /*
-             * If message belongs to another
-             * conversation, don't add it to
-             * current messages.
-             */
-
-            if (
-                currentConversationId !==
-                newConversationId
-            ) {
-                return;
-            }
+                        next.sort(
+                            (a, b) =>
+                                new Date(
+                                    a.createdAt
+                                ) -
+                                new Date(
+                                    b.createdAt
+                                )
+                        );
 
 
-            /*
-             * -----------------------------------------
-             * 4. Prevent duplicate messages
-             * -----------------------------------------
-             */
+                        return next;
 
-            setMessages((prev) => {
+                    }
+                );
 
-                const exists =
-                    prev.some(
-                        (msg) =>
-                            msg._id ===
-                            newMessage._id
-                    );
-
-
-                if (exists) {
-                    return prev;
-                }
-
-
-                return [
-                    ...prev,
-                    newMessage,
-                ];
-            });
-        };
+            };
 
 
         /*
-         * ------------------------------------------------
+         * =====================================================
          * Edited message
-         * ------------------------------------------------
+         * =====================================================
          */
 
-        const handleMessageUpdated = (
-            updatedMessage
-        ) => {
+        const handleMessageUpdated =
+            (updatedMessage) => {
 
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg._id ===
-                    updatedMessage._id
-                        ? updatedMessage
-                        : msg
-                )
-            );
+                if (!updatedMessage) {
+                    return;
+                }
 
 
-            /*
-             * If edited message is the latest
-             * message, update sidebar preview.
-             */
-
-            setConversations((prev) =>
-                prev.map(
-                    (conversation) => {
-
-                        if (
-                            conversation.conversationId?.toString() !==
-                            updatedMessage.conversationId?.toString()
-                        ) {
-                            return conversation;
-                        }
+                const updatedConversationId =
+                    normalizeId(
+                        updatedMessage.conversationId
+                    );
 
 
-                        return {
-                            ...conversation,
+                /*
+                 * Update currently loaded messages.
+                 */
 
-                            lastMessage:
-                                updatedMessage.isDeleted
-                                    ? "Message deleted"
-                                    : updatedMessage.content,
+                setMessages(
+                    (prev) =>
+                        prev.map(
+                            (msg) =>
+                                normalizeId(
+                                    msg._id
+                                ) ===
+                                normalizeId(
+                                    updatedMessage._id
+                                )
+                                    ? updatedMessage
+                                    : msg
+                        )
+                );
 
-                            lastMessageTime:
-                                updatedMessage.createdAt,
-                        };
+
+                /*
+                 * Refresh sidebar.
+                 *
+                 * This handles the case where the edited
+                 * message is the latest message.
+                 */
+
+                refreshConversations();
+
+
+                /*
+                 * Mention handling.
+                 */
+
+                const currentUserName =
+                    currentUser?.displayName?.trim();
+
+
+                if (
+                    currentUserName &&
+                    updatedMessage.content
+                ) {
+
+                    const escapedName =
+                        currentUserName.replace(
+                            /[.*+?^${}()|[\]\\]/g,
+                            "\\$&"
+                        );
+
+
+                    const mentionRegex =
+                        new RegExp(
+                            `@${escapedName}(?=\\s|$|[.,!?])`,
+                            "i"
+                        );
+
+
+                    if (
+                        mentionRegex.test(
+                            updatedMessage.content
+                        ) &&
+                        updatedConversationId
+                    ) {
+
+                        setMentionedConversations(
+                            (prev) => {
+
+                                const updated =
+                                    new Set(prev);
+
+
+                                updated.add(
+                                    updatedConversationId
+                                );
+
+
+                                return updated;
+
+                            }
+                        );
+
                     }
-                )
-            );
 
-          // -----------------------------------------
-          // Mention check for EDITED message
-          // -----------------------------------------
+                }
 
-          const currentUserName =
-              currentUser?.displayName?.trim();
-
-          if (
-              currentUserName &&
-              updatedMessage.content
-          ) {
-              const escapedName =
-                  currentUserName.replace(
-                      /[.*+?^${}()|[\]\\]/g,
-                      "\\$&"
-                  );
-
-              const mentionRegex = new RegExp(
-                  `@${escapedName}(?=\\s|$|[.,!?])`,
-                  "i"
-              );
-
-              const wasMentioned =
-                  mentionRegex.test(
-                      updatedMessage.content
-                  );
-
-              if (wasMentioned) {
-                  const editedConversationId =
-                      updatedMessage.conversationId
-                          ?.toString();
-
-                  setMentionedConversations((prev) => {
-                      const updated = new Set(prev);
-
-                      updated.add(
-                          editedConversationId
-                      );
-
-                      return updated;
-                  });
-              }
-          }
-        };
+            };
 
 
         /*
-         * ------------------------------------------------
+         * =====================================================
          * Deleted message
-         * ------------------------------------------------
+         * =====================================================
          */
 
-        const handleMessageDeleted = (
-            deletedMessage
-        ) => {
+        const handleMessageDeleted =
+            (deletedMessage) => {
 
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg._id ===
-                    deletedMessage._id
-                        ? deletedMessage
-                        : msg
-                )
-            );
+                if (!deletedMessage) {
+                    return;
+                }
 
 
-            /*
-             * Update sidebar preview if
-             * deleted message belongs to
-             * the conversation.
-             */
+                /*
+                 * Update currently loaded messages.
+                 */
 
-            setConversations((prev) =>
-                prev.map(
-                    (conversation) => {
+                setMessages(
+                    (prev) =>
+                        prev.map(
+                            (msg) =>
+                                normalizeId(
+                                    msg._id
+                                ) ===
+                                normalizeId(
+                                    deletedMessage._id
+                                )
+                                    ? deletedMessage
+                                    : msg
+                        )
+                );
 
-                        if (
-                            conversation.conversationId?.toString() !==
-                            deletedMessage.conversationId?.toString()
-                        ) {
-                            return conversation;
-                        }
 
+                /*
+                 * Cassandra determines actual latest
+                 * message after deletion.
+                 */
 
-                        return {
-                            ...conversation,
+                refreshConversations();
 
-                            lastMessage:
-                                "Message deleted",
-
-                            lastMessageTime:
-                                deletedMessage.updatedAt ||
-                                deletedMessage.createdAt,
-                        };
-                    }
-                )
-            );
-        };
+            };
 
 
         /*
-         * ------------------------------------------------
-         * Register Socket listeners
-         * ------------------------------------------------
+         * =====================================================
+         * Register socket listeners
+         * =====================================================
          */
 
         socket.on(
-            "conversationCreated",
+            "conversationUpdated",
             handleConversationUpdated
         );
+
 
         socket.on(
             "newMessage",
@@ -702,55 +838,110 @@ function WidgetContainer({
             handleMessageUpdated
         );
 
+
         socket.on(
             "messageDeleted",
             handleMessageDeleted
         );
-        
-        initializeWidget();
 
 
         /*
-         * ------------------------------------------------
+         * =====================================================
          * Cleanup
-         * ------------------------------------------------
+         * =====================================================
          */
 
         return () => {
+
             conversationLoadRequestRef.current++;
 
+
             socket.off(
-                "conversationCreated",
+                "conversationUpdated",
                 handleConversationUpdated
             );
+
 
             socket.off(
                 "newMessage",
                 handleNewMessage
             );
 
+
             socket.off(
                 "messageUpdated",
                 handleMessageUpdated
             );
 
+
             socket.off(
                 "messageDeleted",
                 handleMessageDeleted
             );
+
         };
 
     }, [
         senderId,
-        isMobile,
+        serverUrl,
         currentUser?.displayName,
+        refreshConversations,
+        updateConversationFromMessage,
     ]);
 
 
     /*
-     * --------------------------------------------------
+     * =========================================================
+     * Leave active conversation on unmount
+     * =========================================================
+     */
+
+    useEffect(() => {
+
+        return () => {
+
+            const activeConversationId =
+                selectedConversationRef.current;
+
+
+            if (!activeConversationId) {
+                return;
+            }
+
+
+            try {
+
+                const socket =
+                    getSocket();
+
+
+                socket.emit(
+                    "leaveConversation",
+                    activeConversationId
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to leave conversation:",
+                    error
+                );
+
+            }
+
+
+            selectedConversationRef.current =
+                null;
+
+        };
+
+    }, []);
+
+
+    /*
+     * =========================================================
      * Load messages whenever conversation changes
-     * --------------------------------------------------
+     * =========================================================
      */
 
     useEffect(() => {
@@ -761,12 +952,15 @@ function WidgetContainer({
 
 
         const selectedConversationId =
-            selectedConversation.conversationId.toString();
+            normalizeId(
+                selectedConversation.conversationId
+            );
 
 
-        /*
-         * Create unique request ID
-         */
+        if (!selectedConversationId) {
+            return;
+        }
+
 
         const requestId =
             ++loadRequestRef.current;
@@ -782,9 +976,7 @@ function WidgetContainer({
 
 
                     /*
-                     * ---------------------------------
-                     * Leave previous conversation
-                     * ---------------------------------
+                     * Leave previous conversation.
                      */
 
                     const previousConversationId =
@@ -802,14 +994,12 @@ function WidgetContainer({
                             "leaveConversation",
                             previousConversationId
                         );
+
                     }
 
 
                     /*
-                     * ---------------------------------
-                     * Update selected conversation ref
-                     * immediately
-                     * ---------------------------------
+                     * Update ref BEFORE joining.
                      */
 
                     selectedConversationRef.current =
@@ -817,26 +1007,14 @@ function WidgetContainer({
 
 
                     /*
-                     * ---------------------------------
-                     * Join new conversation BEFORE
-                     * fetching messages
-                     * ---------------------------------
+                     * Join selected conversation.
                      */
 
-                    if (socket) {
+                    socket.emit(
+                        "joinConversation",
+                        selectedConversationId
+                    );
 
-                        socket.emit(
-                            "joinConversation",
-                            selectedConversationId
-                        );
-                    }
-
-
-                    /*
-                     * ---------------------------------
-                     * Set conversation ID
-                     * ---------------------------------
-                     */
 
                     setConversationId(
                         selectedConversationId
@@ -844,18 +1022,14 @@ function WidgetContainer({
 
 
                     /*
-                     * Clear current messages
-                     * while loading
-                     * ---------------------------------
+                     * Clear old messages.
                      */
 
                     setMessages([]);
 
 
                     /*
-                     * ---------------------------------
-                     * Fetch message history
-                     * ---------------------------------
+                     * Load history.
                      */
 
                     const previousMessages =
@@ -865,9 +1039,7 @@ function WidgetContainer({
 
 
                     /*
-                     * ---------------------------------
-                     * Ignore stale request
-                     * ---------------------------------
+                     * Ignore stale request.
                      */
 
                     if (
@@ -879,42 +1051,33 @@ function WidgetContainer({
 
 
                     /*
-                     * ---------------------------------
-                     * Merge REST history with
-                     * messages received from Socket
-                     * while loading
-                     * ---------------------------------
+                     * Merge REST history with messages
+                     * received over socket while loading.
                      */
 
                     setMessages(
                         (currentMessages) => {
 
                             const merged = [
-                                ...previousMessages,
+                                ...(previousMessages || []),
                                 ...currentMessages,
                             ];
 
-
-                            /*
-                             * Remove duplicates
-                             */
 
                             const unique =
                                 Array.from(
                                     new Map(
                                         merged.map(
                                             (msg) => [
-                                                msg._id,
+                                                normalizeId(
+                                                    msg._id
+                                                ),
                                                 msg,
                                             ]
                                         )
                                     ).values()
                                 );
 
-
-                            /*
-                             * Sort oldest → newest
-                             */
 
                             unique.sort(
                                 (a, b) =>
@@ -928,6 +1091,7 @@ function WidgetContainer({
 
 
                             return unique;
+
                         }
                     );
 
@@ -937,385 +1101,453 @@ function WidgetContainer({
                         "Failed to load messages:",
                         error
                     );
+
                 }
+
             };
 
 
         loadConversation();
 
 
-        /*
-         * Invalidate request if conversation
-         * changes before it completes.
-         */
-
         return () => {
+
             loadRequestRef.current++;
+
         };
 
-    }, [selectedConversation]);
+    }, [
+        selectedConversation,
+    ]);
 
 
     /*
-     * --------------------------------------------------
+     * =========================================================
      * Send message
-     * --------------------------------------------------
+     * =========================================================
      */
 
-    const sendMessage = (fileData = null) => {
+    const sendMessage = (
+        fileData = null
+    ) => {
 
         if (!conversationId) {
             return;
         }
 
-        const socket = getSocket();
+
+        const socket =
+            getSocket();
+
 
         if (!socket) {
-            console.error("Socket is not initialized");
+
+            console.error(
+                "Socket is not initialized"
+            );
+
             return;
         }
 
-        // File message
-        if (fileData) {
-            return new Promise((resolve, reject) => {
-                socket.emit(
-                    "sendMessage",
-                    {
-                        conversationId,
-                        senderId,
-                        content: "",
-                        messageType: fileData.messageType,
-                        attachment: fileData.attachment,
-                    },
-                    (response) => {
-                        if (response?.ok) {
-                            resolve(response.message);
-                            return;
-                        }
 
-                        reject(
-                            new Error(
-                                response?.message ||
-                                "Message could not be sent"
-                            )
-                        );
-                    }
-                );
-            });
+        /*
+         * File message.
+         */
+
+        if (fileData) {
+
+            return new Promise(
+                (
+                    resolve,
+                    reject
+                ) => {
+
+                    socket.emit(
+                        "sendMessage",
+                        {
+                            conversationId,
+                            senderId,
+                            content: "",
+                            messageType:
+                                fileData.messageType,
+                            attachment:
+                                fileData.attachment,
+                        },
+                        (response) => {
+
+                            if (
+                                response?.ok
+                            ) {
+
+                                resolve(
+                                    response.message
+                                );
+
+                                return;
+                            }
+
+
+                            reject(
+                                new Error(
+                                    response?.message ||
+                                    "Message could not be sent"
+                                )
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
         }
 
-        // Text message
+
+        /*
+         * Text message.
+         */
+
         if (!message.trim()) {
             return;
         }
 
-        socket.emit("sendMessage", {
-            conversationId,
-            senderId,
-            content: message.trim(),
-            messageType: "text",
-        });
-
-        setMessage("");
-    };
-
-    /*
-     * --------------------------------------------------
-     * Select conversation
-     * --------------------------------------------------
-     */
-
-    const handleConversationSelect = (
-        conversation
-    ) => {
-
-        const selectedId =
-            conversation.conversationId.toString();
-
-
-        /*
-         * Update ref immediately
-         */
-
-        selectedConversationRef.current =
-            selectedId;
-
-
-        /*
-         * Select conversation
-         */
-
-        setSelectedConversation(
-            conversation
-        );
-
-
-        /*
-         * Remove mention badge
-         * once conversation is opened.
-         */
-
-        setMentionedConversations(
-            (prev) => {
-
-                const updated =
-                    new Set(prev);
-
-                updated.delete(
-                    selectedId
-                );
-
-                return updated;
-            }
-        );
-
-
-        /*
-         * Mobile
-         */
-
-        if (isMobile) {
-            setShowChat(true);
-        }
-    };
-
-
-    /*
-     * --------------------------------------------------
-     * Start one-to-one chat
-     * --------------------------------------------------
-     */
-
-    const handleStartChat = async (
-        targetUserId
-    ) => {
-
-        try {
-
-            const session =
-                await createOrGetDirect(
-                    senderId,
-                    targetUserId
-                );
-
-
-            /*
-             * Refresh conversations
-             */
-
-            const updatedConversations =
-                await getUserConversations(
-                    senderId
-                );
-
-
-            setConversations(
-                updatedConversations
-            );
-
-
-            /*
-             * Find newly selected conversation
-             */
-
-            const conversation =
-                updatedConversations.find(
-                    (item) =>
-                        item.conversationId ===
-                        session.conversationId
-                );
-
-
-            if (conversation) {
-
-                selectedConversationRef.current =
-                    conversation.conversationId.toString();
-
-
-                setSelectedConversation(
-                    conversation
-                );
-
-
-                if (isMobile) {
-                    setShowChat(true);
-                }
-            }
-
-
-            setIsChatModalOpen(false);
-
-        } catch (error) {
-
-            console.error(
-                "Failed to start chat:",
-                error
-            );
-
-            throw error;
-        }
-    };
-
-
-    /*
-     * --------------------------------------------------
-     * Create group
-     * --------------------------------------------------
-     */
-
-    const handleStartGroupChat = async (
-        groupName,
-        participants
-    ) => {
-
-        try {
-
-            const newGroup =
-                await createGroup(
-                    groupName,
-                    senderId,
-                    participants
-                );
-
-
-            /*
-             * Refresh conversations
-             */
-
-            const updatedConversations =
-                await getUserConversations(
-                    senderId
-                );
-
-
-            setConversations(
-                updatedConversations
-            );
-
-
-            /*
-             * Find new group
-             */
-
-            const conversation =
-                updatedConversations.find(
-                    (item) =>
-                        item.conversationId ===
-                        newGroup.conversationId
-                );
-
-
-            if (conversation) {
-
-                selectedConversationRef.current =
-                    conversation.conversationId.toString();
-
-
-                setSelectedConversation(
-                    conversation
-                );
-
-
-                if (isMobile) {
-                    setShowChat(true);
-                }
-            }
-
-
-            setIsGroupModalOpen(false);
-
-        } catch (error) {
-
-            console.error(
-                "Failed to create group:",
-                error
-            );
-
-            throw error;
-        }
-    };
-
-
-    /*
-     * --------------------------------------------------
-     * Edit message
-     * --------------------------------------------------
-     */
-
-    const handleEditMessage = (
-        messageId,
-        content
-    ) => {
-
-        if (!content.trim()) {
-            return;
-        }
-
-
-        const socket =
-            getSocket();
-
-
-        if (!socket) {
-
-            console.error(
-                "Socket is not initialized"
-            );
-
-            return;
-        }
-
 
         socket.emit(
-            "editMessage",
+            "sendMessage",
             {
-                messageId,
+                conversationId,
                 senderId,
                 content:
-                    content.trim(),
+                    message.trim(),
+                messageType:
+                    "text",
             }
         );
+
+
+        setMessage("");
+
     };
 
 
     /*
-     * --------------------------------------------------
-     * Delete message
-     * --------------------------------------------------
+     * =========================================================
+     * Select conversation
+     * =========================================================
      */
 
-    const handleDeleteMessage = (
-        messageId
-    ) => {
+    const handleConversationSelect =
+        (conversation) => {
 
-        const socket =
-            getSocket();
+            const selectedId =
+                normalizeId(
+                    conversation.conversationId
+                );
 
 
-        if (!socket) {
+            if (!selectedId) {
+                return;
+            }
 
-            console.error(
-                "Socket is not initialized"
+
+            selectedConversationRef.current =
+                selectedId;
+
+
+            setSelectedConversation(
+                conversation
             );
 
-            return;
-        }
+
+            /*
+             * Clear mention badge.
+             */
+
+            setMentionedConversations(
+                (prev) => {
+
+                    const updated =
+                        new Set(prev);
 
 
-        socket.emit(
-            "deleteMessage",
-            {
-                messageId,
-                senderId,
+                    updated.delete(
+                        selectedId
+                    );
+
+
+                    return updated;
+
+                }
+            );
+
+
+            if (isMobile) {
+
+                setShowChat(
+                    true
+                );
+
             }
-        );
-    };
+
+        };
 
 
     /*
-     * --------------------------------------------------
-     * Search conversations
-     * --------------------------------------------------
+     * =========================================================
+     * Start direct chat
+     * =========================================================
+     */
+
+    const handleStartChat =
+        async (
+            targetUserId
+        ) => {
+
+            try {
+
+                const session =
+                    await createOrGetDirect(
+                        senderId,
+                        targetUserId
+                    );
+
+
+                const updatedConversations =
+                    await getUserConversations(
+                        senderId
+                    );
+
+
+                setConversations(
+                    updatedConversations || []
+                );
+
+
+                const conversation =
+                    updatedConversations.find(
+                        (item) =>
+                            normalizeId(
+                                item.conversationId
+                            ) ===
+                            normalizeId(
+                                session.conversationId
+                            )
+                    );
+
+
+                if (conversation) {
+
+                    selectedConversationRef.current =
+                        normalizeId(
+                            conversation.conversationId
+                        );
+
+
+                    setSelectedConversation(
+                        conversation
+                    );
+
+
+                    if (isMobile) {
+
+                        setShowChat(
+                            true
+                        );
+
+                    }
+
+                }
+
+
+                setIsChatModalOpen(
+                    false
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to start chat:",
+                    error
+                );
+
+                throw error;
+
+            }
+
+        };
+
+
+    /*
+     * =========================================================
+     * Create group
+     * =========================================================
+     */
+
+    const handleStartGroupChat =
+        async (
+            groupName,
+            participants
+        ) => {
+
+            try {
+
+                const newGroup =
+                    await createGroup(
+                        groupName,
+                        senderId,
+                        participants
+                    );
+
+
+                const updatedConversations =
+                    await getUserConversations(
+                        senderId
+                    );
+
+
+                setConversations(
+                    updatedConversations || []
+                );
+
+
+                const conversation =
+                    updatedConversations.find(
+                        (item) =>
+                            normalizeId(
+                                item.conversationId
+                            ) ===
+                            normalizeId(
+                                newGroup.conversationId
+                            )
+                    );
+
+
+                if (conversation) {
+
+                    selectedConversationRef.current =
+                        normalizeId(
+                            conversation.conversationId
+                        );
+
+
+                    setSelectedConversation(
+                        conversation
+                    );
+
+
+                    if (isMobile) {
+
+                        setShowChat(
+                            true
+                        );
+
+                    }
+
+                }
+
+
+                setIsGroupModalOpen(
+                    false
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to create group:",
+                    error
+                );
+
+                throw error;
+
+            }
+
+        };
+
+
+    /*
+     * =========================================================
+     * Edit message
+     * =========================================================
+     */
+
+    const handleEditMessage =
+        (
+            messageId,
+            content
+        ) => {
+
+            if (!content.trim()) {
+                return;
+            }
+
+
+            const socket =
+                getSocket();
+
+
+            if (!socket) {
+
+                console.error(
+                    "Socket is not initialized"
+                );
+
+                return;
+            }
+
+
+            socket.emit(
+                "editMessage",
+                {
+                    messageId,
+                    senderId,
+                    content:
+                        content.trim(),
+                }
+            );
+
+        };
+
+
+    /*
+     * =========================================================
+     * Delete message
+     * =========================================================
+     */
+
+    const handleDeleteMessage =
+        (
+            messageId
+        ) => {
+
+            const socket =
+                getSocket();
+
+
+            if (!socket) {
+
+                console.error(
+                    "Socket is not initialized"
+                );
+
+                return;
+            }
+
+
+            socket.emit(
+                "deleteMessage",
+                {
+                    messageId,
+                    senderId,
+                }
+            );
+
+        };
+
+
+    /*
+     * =========================================================
+     * Search
+     * =========================================================
      */
 
     const filteredConversations =
@@ -1328,13 +1560,15 @@ function WidgetContainer({
                     )
         );
 
+
     /*
-     * --------------------------------------------------
+     * =========================================================
      * UI
-     * --------------------------------------------------
+     * =========================================================
      */
 
     return (
+
         <div
             className="rtc-widget-container"
             data-theme={theme}
@@ -1350,120 +1584,139 @@ function WidgetContainer({
                 ×
             </button>
 
-            {/* ================================
+
+            {/* ==========================================
                 Conversation Sidebar
-            ================================= */}
+            ========================================== */}
 
             {activeSection === "chat" && (
-            <div
-                className={`rtc-sidebar ${
-                    isMobile &&
-                    showChat
-                        ? "rtc-hide-mobile"
-                        : ""
-                }`}
-            >
-            
-                <div className="rtc-sidebar-header">
 
-                    <div className="rtc-sidebar-title">
+                <div
+                    className={`rtc-sidebar ${
+                        isMobile &&
+                        showChat
+                            ? "rtc-hide-mobile"
+                            : ""
+                    }`}
+                >
 
-                        <h3>
-                            Current User:{" "}
-                            {
-                                currentUser?.displayName
+                    <div className="rtc-sidebar-header">
+
+                        <div className="rtc-sidebar-title">
+
+                            <h3>
+                                Current User:{" "}
+                                {
+                                    currentUser?.displayName
+                                }
+                            </h3>
+
+
+                            <span>
+                                {
+                                    conversations.length
+                                }
+                            </span>
+
+
+                            <ThemeSwitcher
+                                theme={
+                                    theme
+                                }
+                                onChange={
+                                    onThemeChange
+                                }
+                            />
+
+                        </div>
+
+
+                        <div className="rtc-sidebar-buttons">
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setIsChatModalOpen(
+                                        true
+                                    )
+                                }
+                            >
+                                💬 Chat
+                            </button>
+
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setIsGroupModalOpen(
+                                        true
+                                    )
+                                }
+                            >
+                                👥 Group
+                            </button>
+
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setActiveSection(
+                                        "announcements"
+                                    )
+                                }
+                            >
+                                📢 Announcements
+                            </button>
+
+                        </div>
+
+
+                        <input
+                            className="rtc-conversation-search"
+                            type="text"
+                            placeholder="🔍 Search conversations..."
+                            value={
+                                searchText
                             }
-                        </h3>
-
-                        <span>
-                            {
-                                conversations.length
+                            onChange={(e) =>
+                                setSearchText(
+                                    e.target.value
+                                )
                             }
-                        </span>
-
-                        <ThemeSwitcher
-                            theme={theme}
-                            onChange={onThemeChange}
                         />
 
                     </div>
 
 
-                    <div className="rtc-sidebar-buttons">
+                    <ConversationList
+                        conversations={
+                            filteredConversations
+                        }
 
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setIsChatModalOpen(
-                                    true
-                                )
-                            }
-                        >
-                            💬 Chat
-                        </button>
+                        selectedConversation={
+                            selectedConversation
+                        }
 
+                        setSelectedConversation={
+                            handleConversationSelect
+                        }
 
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setIsGroupModalOpen(
-                                    true
-                                )
-                            }
-                        >
-                            👥 Group
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setActiveSection("announcements")
-                            }
-                        >
-                            📢 Announcements
-                        </button>
-
-                    </div>
-
-
-                    <input
-                        className="rtc-conversation-search"
-                        type="text"
-                        placeholder="🔍 Search conversations..."
-                        value={searchText}
-                        onChange={(e) =>
-                            setSearchText(
-                                e.target.value
-                            )
+                        mentionedConversations={
+                            mentionedConversations
                         }
                     />
 
                 </div>
 
-
-                <ConversationList
-                    conversations={
-                        filteredConversations
-                    }
-                    selectedConversation={
-                        selectedConversation
-                    }
-                    setSelectedConversation={
-                        handleConversationSelect
-                    }
-                    mentionedConversations={
-                        mentionedConversations
-                    }
-                />
-
-            </div>
             )}
 
-            {/* ================================
-                Chat Section
-            ================================= */}
 
+            {/* ==========================================
+                Chat
+            ========================================== */}
 
             {activeSection === "chat" && (
+
                 <div
                     className={`rtc-chat-section ${
                         isMobile
@@ -1473,117 +1726,210 @@ function WidgetContainer({
                             : ""
                     }`}
                 >
+
                     <ChatWindow
-                        messages={messages}
-                        message={message}
-                        setMessage={setMessage}
-                        sendMessage={sendMessage}
-                        serverUrl={serverUrl}
+
+                        messages={
+                            messages
+                        }
+
+                        message={
+                            message
+                        }
+
+                        setMessage={
+                            setMessage
+                        }
+
+                        sendMessage={
+                            sendMessage
+                        }
+
+                        serverUrl={
+                            serverUrl
+                        }
+
                         selectedConversation={
                             selectedConversation
                         }
+
                         currentUser={
                             currentUser
                         }
-                        users={users}
+
+                        users={
+                            users
+                        }
+
                         onBack={() => {
 
                             const activeConversationId =
                                 selectedConversationRef.current;
 
-                            if (activeConversationId) {
-                                getSocket().emit(
-                                    "leaveConversation",
-                                    activeConversationId
-                                );
+
+                            if (
+                                activeConversationId
+                            ) {
+
+                                try {
+
+                                    getSocket().emit(
+                                        "leaveConversation",
+                                        activeConversationId
+                                    );
+
+                                } catch (error) {
+
+                                    console.error(
+                                        "Failed to leave conversation:",
+                                        error
+                                    );
+
+                                }
+
                             }
 
-                            setShowChat(false);
+
+                            setShowChat(
+                                false
+                            );
+
 
                             setSelectedConversation(
                                 null
                             );
 
+
                             setConversationId(
                                 null
                             );
 
-                            setMessages([]);
+
+                            setMessages(
+                                []
+                            );
+
 
                             selectedConversationRef.current =
                                 null;
+
                         }}
+
+
                         onEditMessage={
                             handleEditMessage
                         }
+
+
                         onDeleteMessage={
                             handleDeleteMessage
                         }
+
                     />
+
                 </div>
+
             )}
+
+
+            {/* ==========================================
+                Announcements
+            ========================================== */}
 
             {activeSection === "announcements" && (
-                <div className="rtc-announcement-section">
+
+                <div
+                    className="rtc-announcement-section"
+                >
 
                     <AnnouncementPortal
-                        currentUser={currentUser}
-                        users={users}
-                        onBack={()=>
-                            setActiveSection("chat")
+
+                        currentUser={
+                            currentUser
                         }
+
+                        users={
+                            users
+                        }
+
+                        onBack={() =>
+                            setActiveSection(
+                                "chat"
+                            )
+                        }
+
                     />
 
                 </div>
+
             )}
 
 
-            {/* ================================
+            {/* ==========================================
                 New Chat Modal
-            ================================= */}
+            ========================================== */}
 
             <NewChatModal
+
                 currentUser={
                     senderId
                 }
-                users={users}
+
+                users={
+                    users
+                }
+
                 isOpen={
                     isChatModalOpen
                 }
+
                 onClose={() =>
                     setIsChatModalOpen(
                         false
                     )
                 }
+
                 onStartChat={
                     handleStartChat
                 }
+
             />
 
-            {/* ================================
+
+            {/* ==========================================
                 New Group Modal
-            ================================= */}
+            ========================================== */}
 
             <NewGroupModal
+
                 currentUser={
                     senderId
                 }
-                users={users}
+
+                users={
+                    users
+                }
+
                 isOpen={
                     isGroupModalOpen
                 }
+
                 onClose={() =>
                     setIsGroupModalOpen(
                         false
                     )
                 }
+
                 onCreateGroup={
                     handleStartGroupChat
                 }
+
             />
 
         </div>
+
     );
+
 }
 
 
