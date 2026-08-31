@@ -1,65 +1,74 @@
-import Conversation from "../models/conversation.js";
-import Participant from "../models/participant.js";
-import Message from "../models/message.js";
+import {
+    getOrCreateDirect,
+    findById,
+    findByIds,
+    createGroup as createGroupCassandra,
+} from "../repositories/conversationRepository.js";
+import {
+    addParticipants,
+    getByUserId,
+    getByConversationId,
+} from "../repositories/participantRepository.js";
+
+import {
+    getLatestMessage,
+} from "../repositories/messageRepository.js";
+
+
 
 
 // direct chat between two users
 export const createOrGetDirect = async (req, res) => {
-  try {
-    
-    const { currentUserId, targetUserId } = req.body;
-    const participantKey = [currentUserId, targetUserId]
-        .sort()
-        .join(":");
+    try {
 
-    let conversation = await Conversation.findOne({
-        participantKey,
-    });
+        const {
+            currentUserId,
+            targetUserId,
+        } = req.body;
 
-    if (!conversation) {
-        try {
-            conversation = await Conversation.create({
-                type: "direct",
-                participantKey,
+        if (!currentUserId || !targetUserId) {
+            return res.status(400).json({
+                message: "Both user IDs are required",
             });
-
-            await Participant.create([
-                {
-                    userId: currentUserId,
-                    conversationId: conversation._id,
-                },
-                {
-                    userId: targetUserId,
-                    conversationId: conversation._id,
-                },
-            ]);
-
-            return res.status(201).json({
-                conversationId: conversation._id,
-            });
-
-        } catch (error) {
-            // Another simultaneous request may have created it
-            if (error.code === 11000) {
-                conversation = await Conversation.findOne({
-                    participantKey,
-                });
-            } else {
-                throw error;
-            }
         }
+
+        const {
+            conversationId,
+            created,
+        } = await getOrCreateDirect({
+            currentUserId,
+            targetUserId,
+        });
+
+        // Only add participants when the conversation
+        // was actually created.
+        if (created) {
+            await addParticipants({
+                conversationId,
+                userIds: [
+                    currentUserId,
+                    targetUserId,
+                ],
+            });
+        }
+
+        return res.status(
+            created ? 201 : 200
+        ).json({
+            conversationId,
+        });
+
+    } catch (error) {
+
+        console.error(
+            "CREATE/GET DIRECT ERROR:",
+            error
+        );
+
+        return res.status(500).json({
+            message: error.message,
+        });
     }
-
-    return res.status(200).json({
-        conversationId: conversation._id,
-    });
-
-
-  } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
-  }
 };
 
 
@@ -67,85 +76,72 @@ export const getUserConversations = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // Find all participant records for this user
-        const participants = await Participant.find({
-            userId,
-        });
+        // Get all conversations for this user from Cassandra
+        const participantRows = await getByUserId(userId);
 
-        // Extract conversation IDs
-        const conversationIds = participants.map(
-            (participant) =>
-                participant.conversationId
+        const conversationIds = participantRows.map(
+            (participant) => participant.conversation_id
         );
 
-        // Fetch conversations
-        const conversations = await Conversation.find({
-            _id: {
-                $in: conversationIds,
-            },
-        }).sort({
-            createdAt: -1,
-        });
+        if (!conversationIds.length) {
+            return res.status(200).json([]);
+        }
+
+        // Get conversations from Cassandra
+        const conversations = await findByIds(
+            conversationIds
+        );
 
         const response = [];
 
         for (const conversation of conversations) {
 
             let displayName =
-                conversation.displayName;
+                conversation.display_name;
 
-            // Get ALL participants of this conversation
+            // Get ALL participants from Cassandra
             const conversationParticipants =
-                await Participant.find({
-                    conversationId:
-                        conversation._id,
-                });
+                await getByConversationId(
+                    conversation.conversation_id
+                );
 
-            // Extract participant user IDs
             const participantIds =
                 conversationParticipants.map(
                     (participant) =>
-                        participant.userId
+                        participant.user_id
                 );
 
             // Direct chat:
             // show the other participant
             if (
-                conversation.type ===
-                "direct"
+                conversation.type === "direct"
             ) {
                 const otherParticipant =
                     conversationParticipants.find(
                         (participant) =>
-                            participant.userId !==
-                            userId
+                            participant.user_id !== userId
                     );
 
                 displayName =
                     otherParticipant
-                        ? otherParticipant.userId
+                        ? otherParticipant.user_id
                         : "Unknown";
             }
 
-            // Fetch latest message
             const lastMessage =
-                await Message.findOne({
-                    conversationId:
-                        conversation._id,
-                }).sort({
-                    createdAt: -1,
-                });
-            
+                await getLatestMessage(
+                    conversation.conversation_id
+                );
+
             response.push({
                 conversationId:
-                    conversation._id,
+                    conversation.conversation_id,
 
                 type:
                     conversation.type,
 
                 displayName,
 
-                // ⭐ Important for mentions
                 participants:
                     participantIds,
 
@@ -169,25 +165,34 @@ export const getUserConversations = async (req, res) => {
             });
         }
 
-
-        // ⭐ Sort by latest message
+        // Sort by latest message
         response.sort((a, b) => {
+
             const timeA = a.lastMessageTime
-                ? new Date(a.lastMessageTime).getTime()
+                ? new Date(
+                    a.lastMessageTime
+                ).getTime()
                 : 0;
 
             const timeB = b.lastMessageTime
-                ? new Date(b.lastMessageTime).getTime()
+                ? new Date(
+                    b.lastMessageTime
+                ).getTime()
                 : 0;
 
             return timeB - timeA;
         });
 
-
-        res.status(200).json(response);
+        return res.status(200).json(response);
 
     } catch (error) {
-        res.status(500).json({
+
+        console.error(
+            "GET USER CONVERSATIONS ERROR:",
+            error
+        );
+
+        return res.status(500).json({
             message: error.message,
         });
     }
@@ -200,7 +205,6 @@ export const createGroup = async (req, res) => {
             currentUserId,
             participants,
         } = req.body;
-
 
         // -----------------------------
         // Validate request
@@ -217,7 +221,6 @@ export const createGroup = async (req, res) => {
             });
         }
 
-
         // -----------------------------
         // Remove duplicate users
         // -----------------------------
@@ -229,33 +232,24 @@ export const createGroup = async (req, res) => {
             ]),
         ];
 
-
         // -----------------------------
-        // Create conversation
+        // Create group in Cassandra
         // -----------------------------
 
         const conversation =
-            await Conversation.create({
-                type: "group",
-                displayName:
-                    groupName.trim(),
+            await createGroupCassandra({
+                displayName: groupName.trim(),
             });
 
-
         // -----------------------------
-        // Create participants
+        // Create participants in Cassandra
         // -----------------------------
 
-        await Participant.insertMany(
-            allParticipants.map(
-                (userId) => ({
-                    userId,
-                    conversationId:
-                        conversation._id,
-                })
-            )
-        );
-
+        await addParticipants({
+            conversationId:
+                conversation.conversationId,
+            userIds: allParticipants,
+        });
 
         // -----------------------------
         // Response
@@ -263,7 +257,7 @@ export const createGroup = async (req, res) => {
 
         return res.status(201).json({
             conversationId:
-                conversation._id,
+                conversation.conversationId,
 
             displayName:
                 conversation.displayName,
@@ -280,11 +274,8 @@ export const createGroup = async (req, res) => {
         );
 
         return res.status(500).json({
-            message:
-                "Failed to create group",
-
-            error:
-                error.message,
+            message: "Failed to create group",
+            error: error.message,
         });
     }
 };

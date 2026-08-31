@@ -1,15 +1,12 @@
-import cloudinary from "../config/cloudinary.js";
-
 import {
     createMessage,
     findMessageById,
-    updateMessageContent,
     softDeleteMessage,
+    updateMessageContent,
 } from "../repositories/messageRepository.js";
+import cloudinary from "../config/cloudinary.js";
+import { findParticipantsByConversationId } from "../repositories/participantRepository.js";
 
-import {
-    getByConversationId,
-} from "../repositories/participantRepository.js";
 
 const socketHandler = (io) => {
     io.on('connection', (socket) => 
@@ -157,7 +154,6 @@ const socketHandler = (io) => {
 
 
 
-
         // Handle joining a existing conversation
         socket.on("joinConversation", (conversationId) => {
             socket.join(conversationId);
@@ -169,22 +165,27 @@ const socketHandler = (io) => {
             "sendMessage",
             async (data, acknowledge) => {
                 try {
+                    const message =
+                        await createMessage({
+                            conversationId:
+                                data.conversationId,
+                            senderId:
+                                data.senderId,
+                            content:
+                                data.content,
+                            messageType:
+                                data.messageType || "text",
+                            attachment:
+                                data.attachment || null,
+                            status: "sent",
+                        });
 
-                    const message = await createMessage({
-                        conversationId: data.conversationId,
-                        senderId: data.senderId,
-                        content: data.content,
-                        messageType:
-                            data.messageType || "text",
-                        attachment:
-                            data.attachment || null,
-                        status: "sent",
-                    });
 
                     /*
                     * Send to users already inside
                     * the conversation room.
                     */
+
                     io.to(
                         data.conversationId
                     ).emit(
@@ -192,20 +193,24 @@ const socketHandler = (io) => {
                         message
                     );
 
+
                     /*
                     * Notify participants through their
                     * personal rooms.
+                    *
+                    * Frontend can use this event to refresh
+                    * the conversation list when needed.
                     */
+
                     const participants =
-                        await getByConversationId(
+                        await findParticipantsByConversationId(
                             data.conversationId
                         );
 
                     participants.forEach(
                         (participant) => {
-
                             io.to(
-                                `user:${participant.user_id}`
+                                `user:${participant.userId}`
                             ).emit(
                                 "conversationUpdated",
                                 {
@@ -215,6 +220,7 @@ const socketHandler = (io) => {
                             );
                         }
                     );
+
 
                     acknowledge?.({
                         ok: true,
@@ -235,164 +241,124 @@ const socketHandler = (io) => {
 
                     acknowledge?.({
                         ok: false,
-                        message: error.message,
+                        message:
+                            error.message,
                     });
                 }
             }
         );
 
         //Handle editing messages
-        socket.on(
-            "editMessage",
-            async (data) => {
-                try {
+        socket.on("editMessage", async (data) => {
+            try {
+                const message = await updateMessageContent({
+                    messageId: data.messageId,
+                    senderId: data.senderId,
+                    content: data.content,
+                });
 
-                    const message =
-                        await updateMessageContent({
-                            messageId:
-                                data.messageId,
-                            senderId:
-                                data.senderId,
-                            content:
-                                data.content,
-                        });
-
-                    if (!message) {
-                        console.error(
-                            "Message not found or user cannot edit it"
-                        );
-
-                        return;
-                    }
-
-                    io.to(
-                        message.conversationId
-                    ).emit(
-                        "messageUpdated",
-                        message
-                    );
-
-                    console.log(
-                        "Message Edited:",
-                        message._id
-                    );
-
-                } catch (error) {
-
+                if (!message) {
                     console.error(
-                        "Error editing message:",
-                        error.message
+                        "Message not found or user cannot edit it"
                     );
+                    return;
                 }
+
+                // Notify everyone in the conversation
+                io.to(message.conversationId.toString()).emit(
+                    "messageUpdated",
+                    message
+                );
+
+                console.log("Message Edited:", message._id);
+            } catch (error) {
+                console.error(
+                "Error editing message:",
+                error.message
+                );
             }
-        );
+        });
 
 
         //Delete the message
-        socket.on(
-            "deleteMessage",
-            async (data) => {
-                try {
+        socket.on("deleteMessage", async (data) => {
+            try {
+                const found = await findMessageById(
+                    data.messageId
+                );
 
-                    const message =
-                        await findMessageById(
-                            data.messageId
-                        );
-
-                    if (!message) {
-                        console.error(
-                            "Message not found"
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        message.senderId !==
-                        data.senderId
-                    ) {
-                        console.error(
-                            "User cannot delete this message"
-                        );
-
-                        return;
-                    }
-
-                    /*
-                    * Delete file from Cloudinary
-                    */
-                    if (
-                        message.messageType === "file" &&
-                        message.attachment?.publicId
-                    ) {
-
-                        try {
-
-                            await cloudinary.uploader.destroy(
-                                message.attachment.publicId,
-                                {
-                                    resource_type:
-                                        message.attachment
-                                            .resourceType,
-                                }
-                            );
-
-                            console.log(
-                                "Cloudinary file deleted:",
-                                message.attachment.publicId
-                            );
-
-                        } catch (cloudinaryError) {
-
-                            console.error(
-                                "Cloudinary delete failed:",
-                                cloudinaryError.message
-                            );
-
-                            return;
-                        }
-                    }
-
-                    /*
-                    * Soft delete message in Cassandra
-                    */
-                    const deletedMessage =
-                        await softDeleteMessage({
-                            messageId:
-                                data.messageId,
-                            senderId:
-                                data.senderId,
-                        });
-
-                    if (!deletedMessage) {
-                        console.error(
-                            "Message could not be deleted"
-                        );
-
-                        return;
-                    }
-
-                    io.to(
-                        deletedMessage.conversationId
-                    ).emit(
-                        "messageDeleted",
-                        deletedMessage
-                    );
-
-                    console.log(
-                        "Message Deleted:",
-                        deletedMessage._id
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "Error deleting message:",
-                        error.message
-                    );
+                if (
+                    !found ||
+                    found.message.senderId !== data.senderId
+                ) {
+                    console.error("Message not found");
+                    return;
                 }
+
+                const message = found.message;
+
+                /*
+                * Delete file from Cloudinary
+                */
+                if (
+                    message.messageType === "file" &&
+                    message.attachment?.publicId
+                ) {
+                    try {
+                        await cloudinary.uploader.destroy(
+                            message.attachment.publicId,
+                            {
+                                resource_type: message.attachment.resourceType,
+                            }
+                        );
+
+                        console.log(
+                            "Cloudinary file deleted:",
+                            message.attachment.publicId
+                        );
+
+                    } catch (cloudinaryError) {
+                        console.error(
+                            "Cloudinary delete failed:",
+                            cloudinaryError.message
+                        );
+
+                        return;
+                    }
+                }
+
+                /*
+                * Soft delete message
+                */
+                const deletedMessage = await softDeleteMessage({
+                    messageId: data.messageId,
+                    senderId: data.senderId,
+                });
+
+                if (!deletedMessage) {
+                    console.error("Message not found");
+                    return;
+                }
+
+                io.to(
+                    deletedMessage.conversationId.toString()
+                ).emit(
+                    "messageDeleted",
+                    deletedMessage
+                );
+
+                console.log(
+                    "Message Deleted:",
+                    message._id
+                );
+
+            } catch (error) {
+                console.error(
+                    "Error deleting message:",
+                    error.message
+                );
             }
-        );
+        });
         
         socket.on("leaveConversation", (conversationId) => {
             socket.leave(conversationId);
@@ -415,7 +381,6 @@ const socketHandler = (io) => {
     
     
 };
-
 
 
 

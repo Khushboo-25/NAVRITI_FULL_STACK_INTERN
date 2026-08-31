@@ -1,0 +1,1471 @@
+import {
+    createPortal,
+    deletePortalById,
+    findPortalById,
+    findPortalsByIds,
+} from "../repositories/announcementPortalRepository.js";
+import {
+    createMember,
+    createMembers,
+    deleteMember,
+    deleteMembersByPortalId,
+    findMember,
+    findMembersByPortalAndUserIds,
+    findMembersByPortalId,
+    findMembersByUserId,
+    updateMemberRole,
+} from "../repositories/announcementPortalMemberRepository.js";
+import {
+    createAnnouncementRecord,
+    deleteAnnouncementRecord,
+    findAnnouncementById,
+    findAnnouncementsByPortalId,
+    updateAnnouncementRecord,
+} from "../repositories/announcementRepository.js";
+import { isAnnouncementVisibleToUser } from "../utils/serialize.js";
+import cloudinary from "../config/cloudinary.js";
+
+
+let io = null;
+
+export const setAnnouncementSocket = (socketIo) => {
+    io = socketIo;
+};
+
+const createAnnouncementPortal = async (req, res) => {
+    try {
+
+        const {
+            userId,
+            role,
+            name,
+            description,
+            targetAudience = "all",
+            members = [],
+        } = req.body || {};
+
+
+        console.log(
+            "CREATE PORTAL BODY:",
+            req.body
+        );
+
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                message: "Portal name is required",
+            });
+        }
+
+
+        if (role !== "admin") {
+            return res.status(403).json({
+                message:
+                    "Only admins can create announcement portals",
+            });
+        }
+
+
+        if (
+            !["all", "selected"].includes(
+                targetAudience
+            )
+        ) {
+            return res.status(400).json({
+                message:
+                    "Invalid targetAudience",
+            });
+        }
+
+
+        /*
+         * -----------------------------------------
+         * SELECTED PORTAL VALIDATION
+         * -----------------------------------------
+         */
+
+        if (
+            targetAudience === "selected" &&
+            (!Array.isArray(members) ||
+                members.length === 0)
+        ) {
+            return res.status(400).json({
+                message:
+                    "At least one member is required for a selected portal",
+            });
+        }
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PORTAL
+         * -----------------------------------------
+         */
+
+        const portal =
+            await createPortal({
+                name: name.trim(),
+
+                description:
+                    description?.trim() || "",
+
+                createdBy: userId,
+
+                targetAudience,
+            });
+
+
+        /*
+         * -----------------------------------------
+         * HOST IS ALWAYS A MEMBER
+         * -----------------------------------------
+         */
+
+        const membership =
+            await createMember({
+                portalId: portal._id,
+
+                userId,
+
+                role: "host",
+
+                addedBy: userId,
+            });
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PARTICIPANT MEMBERS
+         * -----------------------------------------
+         *
+         * For SELECTED:
+         *   use members sent by frontend.
+         *
+         * For ALL:
+         *   frontend must send all users as members.
+         *
+         * This keeps AnnouncementPortalMember
+         * as the single source of truth for
+         * portal visibility.
+         * -----------------------------------------
+         */
+
+        let participantMembers = [];
+
+
+        if (Array.isArray(members)) {
+
+            participantMembers =
+                members
+                    .filter(
+                        (member) =>
+                            member?.userId
+                    )
+                    .filter(
+                        (member) =>
+                            member.userId !==
+                            userId
+                    )
+                    .map(
+                        (member) => ({
+                            portalId:
+                                portal._id,
+
+                            userId:
+                                member.userId,
+
+                            role:
+                                "participant",
+
+                            addedBy:
+                                userId,
+                        })
+                    );
+        }
+
+
+        /*
+         * -----------------------------------------
+         * CREATE PARTICIPANT MEMBERSHIPS
+         * -----------------------------------------
+         */
+
+        let createdMembers = [];
+
+
+        if (
+            participantMembers.length > 0
+        ) {
+
+            createdMembers =
+                await createMembers(
+                    participantMembers
+                );
+        }
+        if (io) {
+
+            const memberIds = [
+                userId,
+                ...createdMembers.map(
+                    (member) => member.userId
+                ),
+            ];
+
+            memberIds.forEach((memberId) => {
+
+                io.to(`user:${memberId}`).emit(
+                    "announcement:portal-created",
+                    {
+                        portalId: portal._id,
+                    }
+                );
+
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * RESPONSE
+         * -----------------------------------------
+         */
+
+        return res.status(201).json({
+
+            message:
+                "Announcement portal created successfully",
+
+            portal,
+
+            membership,
+
+            members:
+                createdMembers,
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Create announcement portal error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            message:
+                "Failed to create announcement portal",
+
+            error:
+                error.message,
+
+        });
+    }
+};
+
+const addPortalMembers = async (req, res) => {
+  try {
+    const { portalId } = req.params;
+    const { hostUserId, members } = req.body;
+
+    if (!hostUserId) {
+      return res.status(400).json({
+        message: "hostUserId is required",
+      });
+    }
+
+    if (!Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({
+        message: "members array is required",
+      });
+    }
+
+    const host = await findMember(
+      portalId,
+      hostUserId
+    );
+
+    if (!host || host.role !== "host") {
+      return res.status(403).json({
+        message: "Only the host can add members",
+      });
+    }
+
+    const createdMembers =
+      await createMembers(
+        members.map((member) => ({
+          portalId,
+          userId: member.userId,
+          role: member.role,
+          addedBy: hostUserId,
+        }))
+      );
+
+    if (io) {
+
+        createdMembers.forEach((member) => {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-added",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+
+        });
+
+
+        io.to(`user:${hostUserId}`).emit(
+            "announcement:member-added",
+            {
+                portalId,
+                userId: hostUserId,
+            }
+        );
+    }
+
+
+    return res.status(201).json({
+      message: "Members added successfully",
+      members: createdMembers,
+    });
+  } catch (error) {
+    console.error("Add portal members error:", error);
+
+    return res.status(500).json({
+      message: "Failed to add members",
+      error: error.message,
+    });
+  }
+};
+
+
+const createAnnouncement = async (req, res) => {
+  try {
+    const { portalId } = req.params;
+
+    const {
+      senderId,
+      title,
+      content,
+      targetAudience = "all",
+      expiresAt,
+    } = req.body;
+    let { targetUserIds = [] } = req.body;
+
+    if (typeof targetUserIds === "string") {
+        try {
+            targetUserIds = JSON.parse(targetUserIds);
+        } catch {
+            targetUserIds = [targetUserIds];
+        }
+    }
+
+    if (!Array.isArray(targetUserIds)) {
+        targetUserIds = [targetUserIds];
+    }
+    if (!senderId) {
+      return res.status(400).json({
+        message: "senderId is required",
+      });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        message: "Announcement title is required",
+      });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        message: "Announcement content is required",
+      });
+    }
+
+    if (!["all", "selected"].includes(targetAudience)) {
+      return res.status(400).json({
+        message: "Invalid targetAudience",
+      });
+    }
+
+    // Check sender membership
+    const sender = await findMember(
+      portalId,
+      senderId
+    );
+
+    if (!sender) {
+      return res.status(403).json({
+        message: "User is not a member of this announcement portal",
+      });
+    }
+
+    // Only host/admin can create announcements
+    if (
+      sender.role !== "host" &&
+      sender.role !== "admin"
+    ) {
+      return res.status(403).json({
+        message: "Only host or admin can create announcements",
+      });
+    }
+
+    // Validate selected audience
+    if (targetAudience === "selected") {
+      if (
+        !Array.isArray(targetUserIds) ||
+        targetUserIds.length === 0
+      ) {
+        return res.status(400).json({
+          message:
+            "targetUserIds is required when targetAudience is selected",
+        });
+      }
+
+      // Check that all selected users belong to this portal
+      const selectedMembers =
+        await findMembersByPortalAndUserIds(
+          portalId,
+          targetUserIds
+        );
+
+      const selectedParticipantIds = selectedMembers
+        .filter((member) => member.role === "participant")
+        .map((member) => member.userId);
+
+      const invalidUserIds = targetUserIds.filter(
+        (userId) => !selectedParticipantIds.includes(userId)
+      );
+
+      if (invalidUserIds.length > 0) {
+        return res.status(400).json({
+          message:
+            "Some selected users are not participants of this portal",
+          invalidUserIds,
+        });
+      }
+    }
+    const attachments = [];
+
+    for (const file of req.files || []) {
+
+        const uploadResult =
+            await new Promise(
+                (resolve, reject) => {
+
+                    const uploadStream =
+                        cloudinary.uploader.upload_stream(
+                            {
+                                resource_type: "auto",
+                                folder:
+                                    "communication-widget/announcements",
+                            },
+                            (error, result) => {
+
+                                if (error) {
+                                    reject(error);
+                                } else {
+                                    resolve(result);
+                                }
+                            }
+                        );
+
+                    uploadStream.end(
+                        file.buffer
+                    );
+                }
+            );
+
+        attachments.push({
+            url: uploadResult.secure_url,
+
+            fileName:
+                file.originalname,
+
+            fileType:
+                file.mimetype,
+
+            fileSize:
+                file.size,
+
+            publicId:
+                uploadResult.public_id,
+
+            resourceType:
+                uploadResult.resource_type,
+        });
+    }
+
+    const announcement = await createAnnouncementRecord({
+      portalId,
+      senderId,
+      title: title.trim(),
+      content: content.trim(),
+      attachments,
+      targetAudience,
+      targetUserIds:
+        targetAudience === "selected"
+          ? targetUserIds
+          : [],
+      expiresAt: expiresAt || null,
+    });
+
+    return res.status(201).json({
+      message: "Announcement created successfully",
+      announcement,
+    });
+  } catch (error) {
+    console.error("Create announcement error:", error);
+
+    return res.status(500).json({
+      message: "Failed to create announcement",
+      error: error.message,
+    });
+  }
+};
+
+
+const getAnnouncements = async (req, res) => {
+  try {
+    const { portalId } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required",
+      });
+    }
+
+    /*
+     * -----------------------------------------
+     * Check whether portal exists
+     * -----------------------------------------
+     */
+
+    const portal = await findPortalById(
+      portalId
+    );
+
+    if (!portal) {
+      return res.status(404).json({
+        code: "PORTAL_DELETED",
+        message:
+          "This announcement portal has been deleted.",
+      });
+    }
+
+    /*
+     * -----------------------------------------
+     * Check whether user is still a member
+     * -----------------------------------------
+     */
+
+    const member =
+      await findMember(
+        portalId,
+        userId
+      );
+
+    if (!member) {
+      return res.status(403).json({
+        code: "NOT_A_MEMBER",
+        message:
+          "You have been removed from this announcement portal.",
+      });
+    }
+
+    /*
+     * -----------------------------------------
+     * Get announcements
+     * -----------------------------------------
+     */
+
+    const announcements =
+      (await findAnnouncementsByPortalId(portalId))
+        .filter((announcement) =>
+          isAnnouncementVisibleToUser(announcement, userId)
+        );
+
+    return res.status(200).json({
+      message:
+        "Announcements fetched successfully",
+
+      announcements,
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Get announcements error:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to fetch announcements",
+
+      error:
+        error.message,
+    });
+  }
+};
+
+const updateAnnouncement = async (req, res) => {
+  try {
+    const { portalId, announcementId } = req.params;
+
+    const {
+      userId,
+      title,
+      content,
+      targetAudience,
+      expiresAt,
+    } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required",
+      });
+    }
+
+    const member = await findMember(
+      portalId,
+      userId
+    );
+
+    if (!member) {
+      return res.status(403).json({
+        message: "User is not a member of this announcement portal",
+      });
+    }
+
+    if (
+      member.role !== "host" &&
+      member.role !== "admin"
+    ) {
+      return res.status(403).json({
+        message: "Only host or admin can update announcements",
+      });
+    }
+
+    const found = await findAnnouncementById(announcementId);
+
+    if (
+      !found ||
+      found.announcement.portalId !== String(portalId)
+    ) {
+      return res.status(404).json({
+        message: "Announcement not found",
+      });
+    }
+
+    const announcement = await updateAnnouncementRecord({
+      announcementId,
+      title: title !== undefined ? title.trim() : undefined,
+      content: content !== undefined ? content.trim() : undefined,
+      targetAudience,
+      expiresAt,
+    });
+
+    return res.status(200).json({
+      message: "Announcement updated successfully",
+      announcement,
+    });
+  } catch (error) {
+    console.error("Update announcement error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update announcement",
+      error: error.message,
+    });
+  }
+};
+
+
+ const deleteAnnouncement = async (
+    req,
+    res
+) => {
+    try {
+        const {
+            portalId,
+            announcementId,
+        } = req.params;
+
+        const {
+            userId,
+        } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Find announcement
+         * -----------------------------------------
+         */
+
+        const found =
+            await findAnnouncementById(
+                announcementId
+            );
+
+        if (
+            !found ||
+            found.announcement.portalId !== String(portalId)
+        ) {
+            return res.status(404).json({
+                message:
+                    "Announcement not found",
+            });
+        }
+
+        const announcement = found.announcement;
+
+        /*
+         * -----------------------------------------
+         * Check membership
+         * -----------------------------------------
+         */
+
+        const membership =
+            await findMember(
+                portalId,
+                userId
+            );
+
+        if (!membership) {
+            return res.status(403).json({
+                message:
+                    "You are not a member of this portal",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Only host/admin can delete
+         * -----------------------------------------
+         */
+
+        if (
+            membership.role !== "host" &&
+            membership.role !== "admin"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Only host or admin can delete announcements",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete Cloudinary attachments
+         * -----------------------------------------
+         */
+
+        for (
+            const attachment
+            of announcement.attachments || []
+        ) {
+
+            if (
+                !attachment.publicId
+            ) {
+                continue;
+            }
+
+            try {
+
+                await cloudinary.uploader.destroy(
+                    attachment.publicId,
+                    {
+                        resource_type:
+                            attachment.resourceType ||
+                            "image",
+                    }
+                );
+
+                console.log(
+                    "Cloudinary attachment deleted:",
+                    attachment.publicId
+                );
+
+            } catch (cloudinaryError) {
+
+                console.error(
+                    "Cloudinary attachment deletion failed:",
+                    cloudinaryError.message
+                );
+
+                /*
+                 * Stop deletion so we don't end up
+                 * deleting the announcement while
+                 * its files remain in Cloudinary.
+                 */
+
+                return res.status(500).json({
+                    message:
+                        "Failed to delete announcement attachment",
+                    error:
+                        cloudinaryError.message,
+                });
+            }
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete announcement
+         * -----------------------------------------
+         */
+
+        await deleteAnnouncementRecord(
+            announcementId
+        );
+
+        return res.status(200).json({
+            message:
+                "Announcement deleted successfully",
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Failed to delete announcement:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to delete announcement",
+            error: error.message,
+        });
+    }
+};
+
+const getAnnouncement = async (req, res) => {
+  try {
+    const { portalId, announcementId } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required",
+      });
+    }
+
+    // Check portal membership
+    const member = await findMember(
+      portalId,
+      userId
+    );
+
+    if (!member) {
+      return res.status(403).json({
+        message: "User is not a member of this announcement portal",
+      });
+    }
+
+    const found = await findAnnouncementById(announcementId);
+
+    const announcement =
+      found &&
+      found.announcement.portalId === String(portalId) &&
+      isAnnouncementVisibleToUser(found.announcement, userId)
+        ? found.announcement
+        : null;
+
+    if (!announcement) {
+      return res.status(404).json({
+        message: "Announcement not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Announcement fetched successfully",
+      announcement,
+    });
+  } catch (error) {
+    console.error("Get announcement error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch announcement",
+      error: error.message,
+    });
+  }
+};
+
+const getUserAnnouncementPortals = async (
+    req,
+    res
+) => {
+
+    try {
+
+        const { userId } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+
+        const memberships =
+            await findMembersByUserId(
+                userId
+            );
+
+
+        if (!memberships.length) {
+            return res.status(200).json([]);
+        }
+
+
+        const portalIds =
+            memberships.map(
+                (membership) =>
+                    membership.portalId
+            );
+
+
+        const portals =
+            await findPortalsByIds(
+                portalIds
+            );
+
+
+        const membershipMap =
+            new Map(
+                memberships.map(
+                    (membership) => [
+                        membership.portalId.toString(),
+                        membership.role,
+                    ]
+                )
+            );
+
+
+        const result = await Promise.all(
+            portals.map(async (portal) => {
+
+                const members =
+                    (await findMembersByPortalId(
+                        portal._id
+                    )).map((member) => ({
+                        _id: member._id,
+                        userId: member.userId,
+                        role: member.role,
+                    }));
+
+                return {
+                    ...portal,
+
+                    role:
+                        membershipMap.get(
+                            portal._id.toString()
+                        ),
+
+                    members,
+                };
+            })
+        );
+
+        return res.status(200).json(result);
+    } catch (error) {
+
+        console.error(
+            "Failed to get user announcement portals:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to get announcement portals",
+
+            error: error.message,
+        });
+    }
+};
+
+const getPortalMembers = async (req, res) => {
+    try {
+
+        const { portalId } = req.params;
+        const { userId } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Check whether requester is a member
+         * -----------------------------------------
+         */
+
+        const requester =
+            await findMember(
+                portalId,
+                userId
+            );
+
+        if (!requester) {
+            return res.status(403).json({
+                message:
+                    "You are not a member of this portal",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Get all portal members
+         * -----------------------------------------
+         */
+
+        const members =
+            (await findMembersByPortalId(
+                portalId
+            ))
+                .sort((a, b) => {
+                    const timeA = a.createdAt
+                        ? new Date(a.createdAt).getTime()
+                        : 0;
+                    const timeB = b.createdAt
+                        ? new Date(b.createdAt).getTime()
+                        : 0;
+                    return timeA - timeB;
+                })
+                .map((member) => ({
+                    _id: member._id,
+                    userId: member.userId,
+                    role: member.role,
+                    addedBy: member.addedBy,
+                    createdAt: member.createdAt,
+                }));
+
+        return res.status(200).json({
+            message:
+                "Portal members fetched successfully",
+
+            members,
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Get portal members error:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to fetch portal members",
+
+            error:
+                error.message,
+        });
+    }
+};
+
+
+
+const removePortalMember = async (req, res) => {
+    try {
+        const { portalId, userId } = req.params;
+        const { hostUserId } = req.body;
+
+        if (!hostUserId) {
+            return res.status(400).json({
+                message: "hostUserId is required",
+            });
+        }
+
+        // Check portal
+        const portal =
+            await findPortalById(portalId);
+
+        if (!portal) {
+            return res.status(404).json({
+                message: "Announcement portal not found",
+            });
+        }
+
+        // Only host can remove members
+        if (portal.createdBy !== hostUserId) {
+            return res.status(403).json({
+                message: "Only the host can remove members",
+            });
+        }
+
+        // Host cannot remove themselves
+        if (userId === portal.createdBy) {
+            return res.status(400).json({
+                message: "Host cannot be removed from the portal",
+            });
+        }
+
+        const member =
+            await findMember(
+                portalId,
+                userId
+            );
+
+        if (!member) {
+            return res.status(404).json({
+                message: "Member not found in this portal",
+            });
+        }
+
+        await deleteMember(
+            portalId,
+            userId
+        );
+
+        if (io) {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-removed",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+
+
+            io.to(`user:${hostUserId}`).emit(
+                "announcement:member-removed",
+                {
+                    portalId,
+                    userId: member.userId,
+                }
+            );
+        }
+
+        return res.status(200).json({
+            message: "Member removed successfully",
+            removedMember: {
+                userId: member.userId,
+                role: member.role,
+            },
+        });
+
+    } catch (error) {
+        console.error(
+            "Error removing portal member:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to remove portal member",
+            error: error.message,
+        });
+    }
+};
+
+const updatePortalMemberRole = async (req, res) => {
+    try {
+        const { portalId, userId } = req.params;
+        const { hostUserId, role } = req.body;
+
+        if (!hostUserId) {
+            return res.status(400).json({
+                message: "hostUserId is required",
+            });
+        }
+
+        if (!["host", "participant"].includes(role)) {
+            return res.status(400).json({
+                message: "Invalid role",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Check portal
+         * -----------------------------------------
+         */
+
+        const portal =
+            await findPortalById(
+                portalId
+            );
+
+        if (!portal) {
+            return res.status(404).json({
+                message:
+                    "Announcement portal not found",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Check requester
+         * Only an existing HOST can change roles
+         * -----------------------------------------
+         */
+
+        const requester =
+            await findMember(
+                portalId,
+                hostUserId
+            );
+
+        if (
+            !requester ||
+            requester.role !== "host"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Only hosts can change member roles",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Creator can NEVER be demoted
+         * -----------------------------------------
+         */
+
+        if (
+            userId ===
+            portal.createdBy &&
+            role !== "host"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Portal creator must remain host",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Host cannot change their own role
+         * -----------------------------------------
+         */
+
+        if (userId === hostUserId) {
+            return res.status(400).json({
+                message:
+                    "You cannot change your own role",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Find target member
+         * -----------------------------------------
+         */
+
+        const member =
+            await updateMemberRole(
+                portalId,
+                userId,
+                role
+            );
+
+        if (!member) {
+            return res.status(404).json({
+                message:
+                    "Member not found in this portal",
+            });
+        }
+
+        if (io) {
+
+            io.to(`user:${member.userId}`).emit(
+                "announcement:member-role-updated",
+                {
+                    portalId,
+                    userId: member.userId,
+                    role: member.role,
+                }
+            );
+
+
+            io.to(`user:${hostUserId}`).emit(
+                "announcement:member-role-updated",
+                {
+                    portalId,
+                    userId: member.userId,
+                    role: member.role,
+                }
+            );
+        }
+
+        return res.status(200).json({
+            message:
+                "Member role updated successfully",
+
+            member: {
+                userId: member.userId,
+                role: member.role,
+            },
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Update portal member role error:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to update member role",
+
+            error:
+                error.message,
+        });
+    }
+};
+
+
+
+const deleteAnnouncementPortal = async (req, res) => {
+    try {
+
+        const { portalId } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Find portal
+         * -----------------------------------------
+         */
+
+        const portal =
+            await findPortalById(
+                portalId
+            );
+
+        if (!portal) {
+            return res.status(404).json({
+                message:
+                    "Announcement portal not found",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Only portal host can delete
+         * -----------------------------------------
+         */
+
+        const member =
+            await findMember(
+                portalId,
+                userId
+            );
+
+        if (
+            !member ||
+            member.role !== "host"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Only portal hosts can delete the portal",
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete portal announcements
+         * -----------------------------------------
+         */
+
+        const portalMembers =
+            await findMembersByPortalId(
+                portalId
+            );
+        
+        
+        /*
+         * -----------------------------------------
+         * Delete all portal members
+         * -----------------------------------------
+         */
+
+        await deleteMembersByPortalId(
+            portalId
+        );
+        if (io) {
+
+            portalMembers.forEach((member) => {
+
+                io.to(`user:${member.userId}`).emit(
+                    "announcement:portal-deleted",
+                    {
+                        portalId,
+                    }
+                );
+
+            });
+        }
+
+        /*
+         * -----------------------------------------
+         * Delete portal
+         * -----------------------------------------
+         */
+
+        await deletePortalById(
+            portalId
+        );
+
+        return res.status(200).json({
+            message:
+                "Announcement portal deleted successfully",
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Delete announcement portal error:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to delete announcement portal",
+
+            error:
+                error.message,
+        });
+    }
+};
+
+
+
+export {
+  createAnnouncementPortal,
+  addPortalMembers,
+  createAnnouncement,
+  getAnnouncements,
+  getAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  getUserAnnouncementPortals,
+  getPortalMembers,
+  removePortalMember,
+  updatePortalMemberRole,
+  deleteAnnouncementPortal
+};

@@ -3,7 +3,7 @@ import http from 'http';
 import app from './app.js';
 import dotenv from 'dotenv';
 
-import  {connectCassandra } from "./config/cassandra.js";
+import { connectCassandra } from "./config/cassandra.js";
 import socketHandler from './socket/socketHandler.js';
 import {Server} from "socket.io";
 import {
@@ -29,6 +29,3 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-
-
-

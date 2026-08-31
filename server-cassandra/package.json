@@ -1,24 +1,23 @@
 {
-  "name": "communication-server",
+  "name": "communication-server-cassandra",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "setup-schema": "node scripts/setup-schema.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Cassandra-backed communication server with the same API as communication-server",
   "dependencies": {
-    "cassandra-driver": "^4.9.0",
+    "cassandra-driver": "^4.8.0",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.9.0",
     "multer": "^2.2.0",
     "socket.io": "^4.8.3"
   },

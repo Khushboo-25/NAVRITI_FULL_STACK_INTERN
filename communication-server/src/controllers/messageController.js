@@ -1,15 +1,12 @@
-import Message from "../models/message.js";
+import {
+    getMessages as getCassandraMessages,
+} from "../repositories/messageRepository.js";
 
 const getMessages = async (req, res) => {
     try {
         const { conversationId } = req.params;
         const { limit = 100, before } = req.query;
 
-        const query = {
-            conversationId,
-        };
-
-        // Load messages older than the given timestamp
         if (before) {
             const beforeDate = new Date(before);
 
@@ -19,22 +16,29 @@ const getMessages = async (req, res) => {
                 });
             }
 
-            query.createdAt = {
-                $lt: beforeDate,
-            };
+            const messages = await getCassandraMessages({
+                conversationId,
+                limit: Number(limit),
+                before: beforeDate,
+            });
+
+            return res.status(200).json(messages);
         }
 
-        const messages = await Message.find(query)
-            .sort({ createdAt: -1 })
-            .limit(Number(limit));
+        const messages = await getCassandraMessages({
+            conversationId,
+            limit: Number(limit),
+        });
 
-        // Return oldest → newest to the frontend
-        messages.reverse();
-
-        res.status(200).json(messages);
+        return res.status(200).json(messages);
 
     } catch (error) {
-        res.status(500).json({
+        console.error(
+            "GET MESSAGES ERROR:",
+            error
+        );
+
+        return res.status(500).json({
             message: "Failed to fetch messages",
             error: error.message,
         });
