@@ -23,6 +23,9 @@ function ChatWindow({
 }) {
     const [showMembers, setShowMembers] =
         useState(false);
+    const [showScreenShare, setShowScreenShare] = 
+        useState(false);
+
 
 
     /*
@@ -34,6 +37,7 @@ function ChatWindow({
 
     useEffect(() => {
         setShowMembers(false);
+        setShowScreenShare(false);
     }, [selectedConversation?.conversationId]);
 
 
@@ -159,11 +163,33 @@ function ChatWindow({
 
                 {/* Screen Share */}
 
-                <ScreenShare
-                    conversationId={selectedConversation.conversationId}
-                    currentUser={currentUser}
-                    participantIds={users}
-                />
+                <button
+                    type="button"
+                    className={`rtc-call-toggle-button ${
+                        showScreenShare
+                            ? "active"
+                            : ""
+                    }`}
+                    onClick={() =>
+                        setShowScreenShare(
+                            (prev) => !prev
+                        )
+                    }
+                    aria-label={
+                        showScreenShare
+                            ? "Back to chat"
+                            : "Open screen sharing"
+                    }
+                    title={
+                        showScreenShare
+                            ? "Back to chat"
+                            : "Screen sharing"
+                    }
+                >
+                    {showScreenShare
+                        ? "←"
+                        : "▣"}
+                </button>
 
 
                 {/* Three Dot / Members Toggle */}
@@ -198,32 +224,54 @@ function ChatWindow({
 
 
             {/* ================================
-                Messages
+                CHAT SPACE
             ================================= */}
 
-            <MessageList
-                messages={messages}
-                currentUser={currentUser}
-                onEditMessage={onEditMessage}
-                onDeleteMessage={onDeleteMessage}
-            />
+            {!showScreenShare && (
+                <>
+                    <MessageList
+                        messages={messages}
+                        currentUser={currentUser}
+                        onEditMessage={onEditMessage}
+                        onDeleteMessage={onDeleteMessage}
+                    />
+
+                    <ChatInput
+                        message={message}
+                        setMessage={setMessage}
+                        sendMessage={sendMessage}
+                        serverUrl={serverUrl}
+                        users={users}
+                        currentUser={currentUser}
+                        selectedConversation={
+                            selectedConversation
+                        }
+                    />
+                </>
+            )}
 
 
             {/* ================================
-                Input
+                SCREEN SHARE SPACE
             ================================= */}
 
-            <ChatInput
-                message={message}
-                setMessage={setMessage}
-                sendMessage={sendMessage}
-                serverUrl={serverUrl}
-                users={users}
-                currentUser={currentUser}
-                selectedConversation={
-                    selectedConversation
-                }
-            />
+            <div
+                className={`rtc-screen-share-space ${
+                    showScreenShare
+                        ? "visible"
+                        : ""
+                }`}
+            >
+                <ScreenShare
+                    conversationId={
+                        selectedConversation.conversationId
+                    }
+                    currentUser={currentUser}
+                    participantIds={users}
+                    enabled={true}
+                    visible={showScreenShare}
+                />
+            </div>
 
         </div>
     );

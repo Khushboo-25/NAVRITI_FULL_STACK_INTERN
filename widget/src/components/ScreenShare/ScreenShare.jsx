@@ -32,32 +32,53 @@ function ScreenShare({
     currentUser,
     participantIds = [],
     enabled = true,
+    visible = true,
 }) {
 
     const [isSharing, setIsSharing] =
         useState(false);
 
-    const [remoteSharing, setRemoteSharing] =
-        useState(false);
+    const [remoteParticipants, setRemoteParticipants] =
+        useState([]);
+
+    const [hiddenRemoteShares, setHiddenRemoteShares] =
+        useState(new Set());
 
 
     /*
      * =====================================================
-     * One PeerConnection per remote participant
+     * MY OUTGOING PEER CONNECTIONS
      *
-     * user-8  -> RTCPeerConnection
-     * user-13 -> RTCPeerConnection
-     * user-14 -> RTCPeerConnection
+     * One connection per person receiving MY screen.
+     *
+     * user-1  -> PC
+     * user-2  -> PC
+     * user-8  -> PC
      * =====================================================
      */
 
-    const peerConnectionsRef =
+    const outgoingPeerConnectionsRef =
         useRef(new Map());
 
 
     /*
      * =====================================================
-     * One MediaStream per remote participant
+     * REMOTE INCOMING PEER CONNECTIONS
+     *
+     * One connection per person sharing their screen with ME.
+     *
+     * user-8  -> PC
+     * user-13 -> PC
+     * =====================================================
+     */
+
+    const incomingPeerConnectionsRef =
+        useRef(new Map());
+
+
+    /*
+     * =====================================================
+     * REMOTE STREAMS
      * =====================================================
      */
 
@@ -67,7 +88,9 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * ICE candidates per remote participant
+     * PENDING ICE
+     *
+     * userId -> candidate[]
      * =====================================================
      */
 
@@ -77,7 +100,7 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * Video element per remote participant
+     * REMOTE VIDEO ELEMENTS
      * =====================================================
      */
 
@@ -87,7 +110,7 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * Local screen stream
+     * MY LOCAL SCREEN STREAM
      * =====================================================
      */
 
@@ -95,14 +118,8 @@ function ScreenShare({
         useRef(null);
 
 
-    /*
-     * =====================================================
-     * Remote participants currently displaying screen
-     * =====================================================
-     */
-
-    const [remoteParticipants, setRemoteParticipants] =
-        useState([]);
+    const localVideoRef =
+        useRef(null);
 
 
     const userId =
@@ -111,7 +128,7 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * NORMALIZE PARTICIPANT IDS
+     * NORMALIZE PARTICIPANTS
      * =====================================================
      */
 
@@ -153,11 +170,17 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * REMOVE ONE PEER
+     * REMOVE ONE REMOTE SCREEN
+     *
+     * This only closes the INCOMING connection.
+     *
+     * It does NOT affect:
+     * - my own screen
+     * - other remote screens
      * =====================================================
      */
 
-    const removePeerConnection =
+    const removeRemotePeer =
         useCallback(
             (remoteUserId) => {
 
@@ -170,13 +193,17 @@ function ScreenShare({
 
 
                 console.log(
-                    "Removing screen-share peer:",
+                    "Removing remote screen:",
                     key
                 );
 
 
+                /*
+                 * Close only this incoming PC.
+                 */
+
                 const pc =
-                    peerConnectionsRef.current
+                    incomingPeerConnectionsRef.current
                         .get(key);
 
 
@@ -192,50 +219,73 @@ function ScreenShare({
 
                     pc.close();
 
-                    peerConnectionsRef.current
+                    incomingPeerConnectionsRef.current
                         .delete(key);
 
                 }
 
 
+                /*
+                 * Clear remote stream.
+                 */
+
                 remoteStreamsRef.current
                     .delete(key);
 
 
+                /*
+                 * Clear ICE queue.
+                 */
+
                 pendingCandidatesRef.current
                     .delete(key);
+
+
+                /*
+                 * Clear video element.
+                 */
+
+                const video =
+                    remoteVideoRefs.current
+                        .get(key);
+
+
+                if (video) {
+
+                    video.srcObject =
+                        null;
+
+                }
 
 
                 remoteVideoRefs.current
                     .delete(key);
 
 
+                /*
+                 * Remove from UI.
+                 */
+
                 setRemoteParticipants(
+                    (current) =>
+                        current.filter(
+                            (id) =>
+                                id !== key
+                        )
+                );
+
+
+                /*
+                 * Remove hidden state.
+                 */
+
+                setHiddenRemoteShares(
                     (current) => {
 
                         const updated =
-                            current.filter(
-                                (id) =>
-                                    id !== key
-                            );
+                            new Set(current);
 
-
-                        /*
-                         * Hide viewer only when
-                         * the LAST remote peer is gone.
-                         */
-
-                        if (
-                            updated.length ===
-                            0
-                        ) {
-
-                            setRemoteSharing(
-                                false
-                            );
-
-                        }
-
+                        updated.delete(key);
 
                         return updated;
 
@@ -249,56 +299,13 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * CLOSE ALL PEER CONNECTIONS
+     * CREATE INCOMING PEER CONNECTION
+     *
+     * Used when someone sends THEIR screen to ME.
      * =====================================================
      */
 
-    const closeAllPeerConnections =
-        useCallback(() => {
-
-            console.log(
-                "Closing all screen-share peer connections"
-            );
-
-
-            peerConnectionsRef.current
-                .forEach((pc) => {
-
-                    pc.ontrack = null;
-
-                    pc.onicecandidate =
-                        null;
-
-                    pc.onconnectionstatechange =
-                        null;
-
-                    pc.close();
-
-                });
-
-
-            peerConnectionsRef.current.clear();
-
-            remoteStreamsRef.current.clear();
-
-            pendingCandidatesRef.current.clear();
-
-            remoteVideoRefs.current.clear();
-
-            setRemoteParticipants([]);
-
-            setRemoteSharing(false);
-
-        }, []);
-
-
-    /*
-     * =====================================================
-     * CREATE PEER CONNECTION FOR ONE USER
-     * =====================================================
-     */
-
-    const createPeerConnection =
+    const createIncomingPeerConnection =
         useCallback(
             (remoteUserId) => {
 
@@ -310,12 +317,8 @@ function ScreenShare({
                 }
 
 
-                /*
-                 * Reuse existing PC.
-                 */
-
                 const existing =
-                    peerConnectionsRef.current
+                    incomingPeerConnectionsRef.current
                         .get(key);
 
 
@@ -327,7 +330,7 @@ function ScreenShare({
 
 
                 console.log(
-                    "Creating screen-share peer connection:",
+                    "Creating INCOMING screen-share connection:",
                     key
                 );
 
@@ -339,27 +342,7 @@ function ScreenShare({
 
 
                 /*
-                 * Create ICE queue for this user.
-                 */
-
-                if (
-                    !pendingCandidatesRef.current
-                        .has(key)
-                ) {
-
-                    pendingCandidatesRef.current
-                        .set(
-                            key,
-                            []
-                        );
-
-                }
-
-
-                /*
-                 * =================================================
-                 * ICE CANDIDATE
-                 * =================================================
+                 * ICE
                  */
 
                 pc.onicecandidate =
@@ -368,19 +351,8 @@ function ScreenShare({
                         if (
                             !event.candidate
                         ) {
-
                             return;
-
                         }
-
-
-                        console.log(
-                            "Sending screen-share ICE:",
-                            {
-                                from: userId,
-                                to: key,
-                            }
-                        );
 
 
                         sendScreenShareIceCandidate(
@@ -394,9 +366,7 @@ function ScreenShare({
 
 
                 /*
-                 * =================================================
-                 * REMOTE TRACK
-                 * =================================================
+                 * REMOTE SCREEN
                  */
 
                 pc.ontrack =
@@ -404,10 +374,7 @@ function ScreenShare({
 
                         console.log(
                             "REMOTE SCREEN TRACK RECEIVED:",
-                            {
-                                from: key,
-                                event,
-                            }
+                            key
                         );
 
 
@@ -416,7 +383,7 @@ function ScreenShare({
 
 
                         /*
-                         * Fallback MediaStream.
+                         * Fallback stream.
                          */
 
                         if (!stream) {
@@ -440,7 +407,7 @@ function ScreenShare({
                             }
 
 
-                            const alreadyAdded =
+                            const exists =
                                 stream
                                     .getTracks()
                                     .some(
@@ -450,9 +417,7 @@ function ScreenShare({
                                     );
 
 
-                            if (
-                                !alreadyAdded
-                            ) {
+                            if (!exists) {
 
                                 stream.addTrack(
                                     event.track
@@ -472,8 +437,7 @@ function ScreenShare({
 
 
                         /*
-                         * Add this user to
-                         * visible remote screens.
+                         * Add remote participant.
                          */
 
                         setRemoteParticipants(
@@ -500,20 +464,7 @@ function ScreenShare({
 
 
                         /*
-                         * IMPORTANT:
-                         *
-                         * This makes the viewer
-                         * actually render.
-                         */
-
-                        setRemoteSharing(
-                            true
-                        );
-
-
-                        /*
-                         * Attach stream after
-                         * React renders <video>.
+                         * Attach video after render.
                          */
 
                         setTimeout(() => {
@@ -525,11 +476,6 @@ function ScreenShare({
 
                             if (!video) {
 
-                                console.warn(
-                                    "Remote video element not ready:",
-                                    key
-                                );
-
                                 return;
 
                             }
@@ -540,21 +486,14 @@ function ScreenShare({
 
 
                             video.play()
-                                .then(() => {
-
-                                    console.log(
-                                        "REMOTE SCREEN VIDEO PLAYING:",
-                                        key
-                                    );
-
-                                })
                                 .catch(
                                     (error) => {
 
                                         console.error(
                                             "REMOTE VIDEO PLAY FAILED:",
                                             {
-                                                userId: key,
+                                                remoteUserId:
+                                                    key,
                                                 error,
                                             }
                                         );
@@ -566,19 +505,19 @@ function ScreenShare({
 
 
                         /*
-                         * Remote track ended.
+                         * Track ended.
                          */
 
                         event.track.onended =
                             () => {
 
                                 console.log(
-                                    "Remote screen track ended:",
+                                    "REMOTE SCREEN TRACK ENDED:",
                                     key
                                 );
 
 
-                                removePeerConnection(
+                                removeRemotePeer(
                                     key
                                 );
 
@@ -588,18 +527,17 @@ function ScreenShare({
 
 
                 /*
-                 * =================================================
                  * CONNECTION STATE
-                 * =================================================
                  */
 
                 pc.onconnectionstatechange =
                     () => {
 
                         console.log(
-                            "Screen-share connection:",
+                            "Incoming screen-share connection:",
                             {
-                                remoteUserId: key,
+                                remoteUserId:
+                                    key,
                                 state:
                                     pc.connectionState,
                             }
@@ -616,12 +554,12 @@ function ScreenShare({
                         ) {
 
                             if (
-                                peerConnectionsRef.current
+                                incomingPeerConnectionsRef.current
                                     .get(key) ===
                                 pc
                             ) {
 
-                                removePeerConnection(
+                                removeRemotePeer(
                                     key
                                 );
 
@@ -632,15 +570,29 @@ function ScreenShare({
                     };
 
 
+                incomingPeerConnectionsRef.current
+                    .set(
+                        key,
+                        pc
+                    );
+
+
                 /*
-                 * Save PC using remote user
-                 * as the Map key.
+                 * Create ICE queue.
                  */
 
-                peerConnectionsRef.current.set(
-                    key,
-                    pc
-                );
+                if (
+                    !pendingCandidatesRef.current
+                        .has(key)
+                ) {
+
+                    pendingCandidatesRef.current
+                        .set(
+                            key,
+                            []
+                        );
+
+                }
 
 
                 return pc;
@@ -649,14 +601,136 @@ function ScreenShare({
             [
                 conversationId,
                 userId,
-                removePeerConnection,
+                removeRemotePeer,
             ]
         );
 
 
     /*
      * =====================================================
-     * START SCREEN SHARING
+     * CREATE OUTGOING PEER CONNECTION
+     *
+     * Used when I send MY screen to someone.
+     * =====================================================
+     */
+
+    const createOutgoingPeerConnection =
+        useCallback(
+            (remoteUserId) => {
+
+                const key =
+                    remoteUserId?.toString();
+
+                if (!key) {
+                    return null;
+                }
+
+
+                const existing =
+                    outgoingPeerConnectionsRef.current
+                        .get(key);
+
+
+                if (existing) {
+
+                    return existing;
+
+                }
+
+
+                console.log(
+                    "Creating OUTGOING screen-share connection:",
+                    key
+                );
+
+
+                const pc =
+                    new RTCPeerConnection(
+                        RTC_CONFIG
+                    );
+
+
+                pc.onicecandidate =
+                    (event) => {
+
+                        if (
+                            !event.candidate
+                        ) {
+                            return;
+                        }
+
+
+                        sendScreenShareIceCandidate(
+                            conversationId,
+                            userId,
+                            key,
+                            event.candidate
+                        );
+
+                    };
+
+
+                pc.onconnectionstatechange =
+                    () => {
+
+                        console.log(
+                            "Outgoing screen-share connection:",
+                            {
+                                remoteUserId:
+                                    key,
+                                state:
+                                    pc.connectionState,
+                            }
+                        );
+
+
+                        if (
+                            pc.connectionState ===
+                                "failed" ||
+                            pc.connectionState ===
+                                "closed" ||
+                            pc.connectionState ===
+                                "disconnected"
+                        ) {
+
+                            if (
+                                outgoingPeerConnectionsRef.current
+                                    .get(key) ===
+                                pc
+                            ) {
+
+                                pc.close();
+
+                                outgoingPeerConnectionsRef.current
+                                    .delete(key);
+
+                            }
+
+                        }
+
+                    };
+
+
+                outgoingPeerConnectionsRef.current
+                    .set(
+                        key,
+                        pc
+                    );
+
+
+                return pc;
+
+            },
+            [
+                conversationId,
+                userId,
+            ]
+        );
+
+
+    /*
+     * =====================================================
+     * START MY SCREEN
      * =====================================================
      */
 
@@ -701,7 +775,7 @@ function ScreenShare({
 
 
                 /*
-                 * Get screen ONCE.
+                 * Capture screen ONCE.
                  */
 
                 const stream =
@@ -715,12 +789,6 @@ function ScreenShare({
                         });
 
 
-                console.log(
-                    "SCREEN CAPTURE ACQUIRED:",
-                    stream
-                );
-
-
                 localStreamRef.current =
                     stream;
 
@@ -729,7 +797,22 @@ function ScreenShare({
 
 
                 /*
-                 * Browser native Stop sharing.
+                 * Attach local preview.
+                 */
+
+                if (
+                    localVideoRef.current
+                ) {
+
+                    localVideoRef.current
+                        .srcObject =
+                        stream;
+
+                }
+
+
+                /*
+                 * Browser stop button.
                  */
 
                 stream
@@ -744,7 +827,6 @@ function ScreenShare({
                                         "Browser stopped screen sharing"
                                     );
 
-
                                     stopSharing();
 
                                 };
@@ -754,8 +836,7 @@ function ScreenShare({
 
 
                 /*
-                 * Get every participant except
-                 * current user.
+                 * Get all recipients.
                  */
 
                 const targets =
@@ -768,19 +849,9 @@ function ScreenShare({
                 );
 
 
-                if (!targets.length) {
-
-                    console.warn(
-                        "No remote participants available for screen sharing."
-                    );
-
-                    return;
-
-                }
-
-
                 /*
-                 * Notify conversation.
+                 * Tell everyone that
+                 * I started sharing.
                  */
 
                 notifyScreenShareStarted(
@@ -790,9 +861,7 @@ function ScreenShare({
 
 
                 /*
-                 * =================================================
-                 * ONE PEER CONNECTION PER PARTICIPANT
-                 * =================================================
+                 * One PC per recipient.
                  */
 
                 for (
@@ -802,28 +871,19 @@ function ScreenShare({
 
                     try {
 
-                        console.log(
-                            "Creating screen-share connection to:",
-                            targetUserId
-                        );
-
-
                         const pc =
-                            createPeerConnection(
+                            createOutgoingPeerConnection(
                                 targetUserId
                             );
 
 
                         if (!pc) {
-
                             continue;
-
                         }
 
 
                         /*
-                         * Add same screen track
-                         * to this peer connection.
+                         * Add my screen track.
                          */
 
                         stream
@@ -831,10 +891,26 @@ function ScreenShare({
                             .forEach(
                                 (track) => {
 
-                                    pc.addTrack(
-                                        track,
-                                        stream
-                                    );
+                                    const exists =
+                                        pc
+                                            .getSenders()
+                                            .some(
+                                                (sender) =>
+                                                    sender
+                                                        .track
+                                                        ?.id ===
+                                                    track.id
+                                            );
+
+
+                                    if (!exists) {
+
+                                        pc.addTrack(
+                                            track,
+                                            stream
+                                        );
+
+                                    }
 
                                 }
                             );
@@ -872,8 +948,11 @@ function ScreenShare({
                     } catch (error) {
 
                         console.error(
-                            `Failed to create screen-share connection for ${targetUserId}:`,
-                            error
+                            "Failed to create outgoing screen connection:",
+                            {
+                                targetUserId,
+                                error,
+                            }
                         );
 
                     }
@@ -894,7 +973,12 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * STOP SCREEN SHARING
+     * STOP MY SCREEN
+     *
+     * IMPORTANT:
+     * Only OUTGOING PCs are closed.
+     *
+     * Incoming remote screens remain untouched.
      * =====================================================
      */
 
@@ -903,12 +987,12 @@ function ScreenShare({
             (notify = true) => {
 
                 console.log(
-                    "Stopping screen share"
+                    "Stopping MY screen share"
                 );
 
 
                 /*
-                 * Stop local screen.
+                 * Stop local tracks.
                  */
 
                 if (
@@ -936,10 +1020,40 @@ function ScreenShare({
 
 
                 /*
-                 * Close all PCs.
+                 * Remove local video.
                  */
 
-                closeAllPeerConnections();
+                if (
+                    localVideoRef.current
+                ) {
+
+                    localVideoRef.current
+                        .srcObject =
+                        null;
+
+                }
+
+
+                /*
+                 * Close ONLY outgoing PCs.
+                 */
+
+                outgoingPeerConnectionsRef.current
+                    .forEach((pc) => {
+
+                        pc.onicecandidate =
+                            null;
+
+                        pc.onconnectionstatechange =
+                            null;
+
+                        pc.close();
+
+                    });
+
+
+                outgoingPeerConnectionsRef.current
+                    .clear();
 
 
                 setIsSharing(false);
@@ -966,7 +1080,86 @@ function ScreenShare({
             [
                 conversationId,
                 userId,
-                closeAllPeerConnections,
+            ]
+        );
+
+
+    /*
+     * =====================================================
+     * HIDE REMOTE SCREEN
+     *
+     * Connection stays alive.
+     * =====================================================
+     */
+
+    const toggleRemoteScreen =
+        useCallback(
+            (remoteUserId) => {
+
+                const key =
+                    remoteUserId?.toString();
+
+                if (!key) {
+                    return;
+                }
+
+
+                setHiddenRemoteShares(
+                    (current) => {
+
+                        const updated =
+                            new Set(current);
+
+
+                        if (
+                            updated.has(key)
+                        ) {
+
+                            updated.delete(key);
+
+                        } else {
+
+                            updated.add(key);
+
+                        }
+
+
+                        return updated;
+
+                    }
+                );
+
+            },
+            []
+        );
+
+
+    /*
+     * =====================================================
+     * CLOSE REMOTE SCREEN FOR ME
+     *
+     * Does NOT notify the sharer.
+     * Does NOT affect anyone else.
+     * =====================================================
+     */
+
+    const closeRemoteScreen =
+        useCallback(
+            (remoteUserId) => {
+
+                console.log(
+                    "Closing remote screen locally:",
+                    remoteUserId
+                );
+
+
+                removeRemotePeer(
+                    remoteUserId
+                );
+
+            },
+            [
+                removeRemotePeer,
             ]
         );
 
@@ -996,7 +1189,7 @@ function ScreenShare({
 
         /*
          * =================================================
-         * RECEIVE OFFER
+         * OFFER
          * =================================================
          */
 
@@ -1006,19 +1199,6 @@ function ScreenShare({
                 targetUserId,
                 offer,
             }) => {
-                 console.log("========== SCREEN OFFER RECEIVED ==========");
-                console.log({
-                    myUserId: userId,
-                    senderUserId,
-                    targetUserId,
-                    conversationId,
-                    hasOffer: !!offer,
-                });
-                console.log("==========================================");
-
-                /*
-                 * Ignore offers not meant for us.
-                 */
 
                 if (
                     targetUserId?.toString() !==
@@ -1029,10 +1209,6 @@ function ScreenShare({
 
                 }
 
-
-                /*
-                 * Ignore own offer.
-                 */
 
                 if (
                     senderUserId?.toString() ===
@@ -1053,40 +1229,40 @@ function ScreenShare({
                     console.log(
                         "RECEIVED SCREEN OFFER:",
                         {
-                            from: remoteUserId,
-                            to: userId,
+                            from:
+                                remoteUserId,
+                            to:
+                                userId,
                         }
                     );
 
 
                     /*
-                     * If an old PC exists for
-                     * this SAME user, close it.
-                     *
-                     * Do not touch other users.
+                     * If an old incoming PC exists,
+                     * replace only that PC.
                      */
 
-                    const existing =
-                        peerConnectionsRef.current
+                    const oldPc =
+                        incomingPeerConnectionsRef.current
                             .get(
                                 remoteUserId
                             );
 
 
-                    if (existing) {
+                    if (oldPc) {
 
-                        existing.ontrack =
+                        oldPc.ontrack =
                             null;
 
-                        existing.onicecandidate =
+                        oldPc.onicecandidate =
                             null;
 
-                        existing.onconnectionstatechange =
+                        oldPc.onconnectionstatechange =
                             null;
 
-                        existing.close();
+                        oldPc.close();
 
-                        peerConnectionsRef.current
+                        incomingPeerConnectionsRef.current
                             .delete(
                                 remoteUserId
                             );
@@ -1094,26 +1270,16 @@ function ScreenShare({
                     }
 
 
-                    /*
-                     * Create PC for this sender.
-                     */
-
                     const pc =
-                        createPeerConnection(
+                        createIncomingPeerConnection(
                             remoteUserId
                         );
 
 
                     if (!pc) {
-
                         return;
-
                     }
 
-
-                    /*
-                     * Set remote offer.
-                     */
 
                     await pc.setRemoteDescription(
                         new RTCSessionDescription(
@@ -1123,8 +1289,7 @@ function ScreenShare({
 
 
                     /*
-                     * Process ICE that arrived
-                     * before offer.
+                     * Add pending ICE.
                      */
 
                     const pending =
@@ -1152,12 +1317,6 @@ function ScreenShare({
                                 new RTCIceCandidate(
                                     candidate
                                 )
-                            );
-
-
-                            console.log(
-                                "PENDING SCREEN ICE ADDED:",
-                                remoteUserId
                             );
 
                         } catch (error) {
@@ -1188,15 +1347,6 @@ function ScreenShare({
                     );
 
 
-                    console.log(
-                        "SENDING SCREEN ANSWER:",
-                        {
-                            from: userId,
-                            to: remoteUserId,
-                        }
-                    );
-
-
                     sendScreenShareAnswer(
                         conversationId,
                         userId,
@@ -1221,7 +1371,7 @@ function ScreenShare({
 
         /*
          * =================================================
-         * RECEIVE ANSWER
+         * ANSWER
          * =================================================
          */
 
@@ -1232,12 +1382,18 @@ function ScreenShare({
                 answer,
             }) => {
 
-                /*
-                 * Answer must be for us.
-                 */
-
                 if (
                     targetUserId?.toString() !==
+                    userId?.toString()
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    senderUserId?.toString() ===
                     userId?.toString()
                 ) {
 
@@ -1250,8 +1406,13 @@ function ScreenShare({
                     senderUserId.toString();
 
 
+                /*
+                 * Answer belongs to an
+                 * OUTGOING connection.
+                 */
+
                 const pc =
-                    peerConnectionsRef.current
+                    outgoingPeerConnectionsRef.current
                         .get(
                             remoteUserId
                         );
@@ -1260,7 +1421,7 @@ function ScreenShare({
                 if (!pc) {
 
                     console.error(
-                        "No peer connection for screen-share answer:",
+                        "No outgoing PC for screen answer:",
                         remoteUserId
                     );
 
@@ -1271,15 +1432,6 @@ function ScreenShare({
 
                 try {
 
-                    console.log(
-                        "RECEIVED SCREEN ANSWER:",
-                        {
-                            from: remoteUserId,
-                            to: userId,
-                        }
-                    );
-
-
                     await pc.setRemoteDescription(
                         new RTCSessionDescription(
                             answer
@@ -1288,8 +1440,7 @@ function ScreenShare({
 
 
                     /*
-                     * Add ICE that arrived
-                     * before answer.
+                     * Add pending ICE.
                      */
 
                     const pending =
@@ -1322,7 +1473,7 @@ function ScreenShare({
                         } catch (error) {
 
                             console.error(
-                                "FAILED PENDING ICE AFTER ANSWER:",
+                                "FAILED ICE AFTER ANSWER:",
                                 {
                                     remoteUserId,
                                     error,
@@ -1336,7 +1487,7 @@ function ScreenShare({
                 } catch (error) {
 
                     console.error(
-                        "Failed to handle screen share answer:",
+                        "Failed to handle screen answer:",
                         {
                             remoteUserId,
                             error,
@@ -1350,7 +1501,7 @@ function ScreenShare({
 
         /*
          * =================================================
-         * RECEIVE ICE
+         * ICE
          * =================================================
          */
 
@@ -1361,9 +1512,14 @@ function ScreenShare({
                 candidate,
             }) => {
 
-                /*
-                 * Only process ICE meant for us.
-                 */
+                if (
+                    !candidate
+                ) {
+
+                    return;
+
+                }
+
 
                 if (
                     targetUserId?.toString() !==
@@ -1375,7 +1531,10 @@ function ScreenShare({
                 }
 
 
-                if (!candidate) {
+                if (
+                    senderUserId?.toString() ===
+                    userId?.toString()
+                ) {
 
                     return;
 
@@ -1386,16 +1545,38 @@ function ScreenShare({
                     senderUserId.toString();
 
 
-                const pc =
-                    peerConnectionsRef.current
+                /*
+                 * The same signaling event can
+                 * correspond to:
+                 *
+                 * incoming PC
+                 * OR
+                 * outgoing PC
+                 *
+                 * Try whichever exists.
+                 */
+
+                const incomingPc =
+                    incomingPeerConnectionsRef.current
                         .get(
                             remoteUserId
                         );
 
 
+                const outgoingPc =
+                    outgoingPeerConnectionsRef.current
+                        .get(
+                            remoteUserId
+                        );
+
+
+                const pc =
+                    incomingPc ||
+                    outgoingPc;
+
+
                 /*
-                 * PC doesn't exist yet.
-                 * Queue ICE for this specific user.
+                 * PC not created yet.
                  */
 
                 if (!pc) {
@@ -1438,10 +1619,6 @@ function ScreenShare({
 
                 try {
 
-                    /*
-                     * Remote description already exists.
-                     */
-
                     if (
                         pc.remoteDescription &&
                         pc.remoteDescription.type
@@ -1455,16 +1632,11 @@ function ScreenShare({
 
 
                         console.log(
-                            "REMOTE SCREEN ICE ADDED:",
+                            "SCREEN ICE ADDED:",
                             remoteUserId
                         );
 
                     } else {
-
-                        /*
-                         * Queue until remote offer
-                         * is applied.
-                         */
 
                         if (
                             !pendingCandidatesRef.current
@@ -1490,18 +1662,12 @@ function ScreenShare({
                                 candidate
                             );
 
-
-                        console.log(
-                            "SCREEN ICE QUEUED:",
-                            remoteUserId
-                        );
-
                     }
 
                 } catch (error) {
 
                     console.error(
-                        "Failed to add ICE candidate:",
+                        "Failed to add ICE:",
                         {
                             remoteUserId,
                             error,
@@ -1515,7 +1681,7 @@ function ScreenShare({
 
         /*
          * =================================================
-         * SCREEN SHARE STARTED
+         * STARTED
          * =================================================
          */
 
@@ -1544,7 +1710,7 @@ function ScreenShare({
 
         /*
          * =================================================
-         * SCREEN SHARE STOPPED
+         * STOPPED
          * =================================================
          */
 
@@ -1570,10 +1736,11 @@ function ScreenShare({
 
 
                 /*
-                 * Remove only this sender.
+                 * Remove ONLY that user's
+                 * incoming connection.
                  */
 
-                removePeerConnection(
+                removeRemotePeer(
                     senderUserId
                 );
 
@@ -1581,9 +1748,7 @@ function ScreenShare({
 
 
         /*
-         * =================================================
-         * REGISTER LISTENERS
-         * =================================================
+         * Register listeners.
          */
 
         socket.on(
@@ -1613,9 +1778,7 @@ function ScreenShare({
 
 
         /*
-         * =================================================
-         * CLEANUP LISTENERS
-         * =================================================
+         * Cleanup listeners only.
          */
 
         return () => {
@@ -1651,14 +1814,14 @@ function ScreenShare({
         enabled,
         conversationId,
         userId,
-        createPeerConnection,
-        removePeerConnection,
+        createIncomingPeerConnection,
+        removeRemotePeer,
     ]);
 
 
     /*
      * =====================================================
-     * ATTACH STREAMS AFTER VIDEO RENDERS
+     * ATTACH REMOTE STREAMS
      * =====================================================
      */
 
@@ -1688,25 +1851,11 @@ function ScreenShare({
                         stream
                 ) {
 
-                    console.log(
-                        "ATTACHING REMOTE STREAM:",
-                        remoteUserId
-                    );
-
-
                     video.srcObject =
                         stream;
 
 
                     video.play()
-                        .then(() => {
-
-                            console.log(
-                                "REMOTE VIDEO PLAYING:",
-                                remoteUserId
-                            );
-
-                        })
                         .catch(
                             (error) => {
 
@@ -1733,7 +1882,54 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * CLEANUP WHEN COMPONENT UNMOUNTS
+     * LOCAL PREVIEW
+     * =====================================================
+     */
+
+    useEffect(() => {
+
+        if (
+            isSharing &&
+            localStreamRef.current &&
+            localVideoRef.current
+        ) {
+
+            if (
+                localVideoRef.current
+                    .srcObject !==
+                localStreamRef.current
+            ) {
+
+                localVideoRef.current
+                    .srcObject =
+                    localStreamRef.current;
+
+            }
+
+
+            localVideoRef.current
+                .play()
+                .catch(
+                    (error) => {
+
+                        console.error(
+                            "LOCAL VIDEO PLAY FAILED:",
+                            error
+                        );
+
+                    }
+                );
+
+        }
+
+    }, [
+        isSharing,
+    ]);
+
+
+    /*
+     * =====================================================
+     * FULL COMPONENT CLEANUP
      * =====================================================
      */
 
@@ -1747,7 +1943,7 @@ function ScreenShare({
 
 
             /*
-             * Stop local screen.
+             * Stop my local stream.
              */
 
             if (
@@ -1775,13 +1971,11 @@ function ScreenShare({
 
 
             /*
-             * Close every PC.
+             * Close outgoing PCs.
              */
 
-            peerConnectionsRef.current
+            outgoingPeerConnectionsRef.current
                 .forEach((pc) => {
-
-                    pc.ontrack = null;
 
                     pc.onicecandidate =
                         null;
@@ -1794,13 +1988,84 @@ function ScreenShare({
                 });
 
 
-            peerConnectionsRef.current.clear();
+            outgoingPeerConnectionsRef.current
+                .clear();
+
+
+            /*
+             * Close incoming PCs.
+             */
+
+            incomingPeerConnectionsRef.current
+                .forEach((pc) => {
+
+                    pc.ontrack =
+                        null;
+
+                    pc.onicecandidate =
+                        null;
+
+                    pc.onconnectionstatechange =
+                        null;
+
+                    pc.close();
+
+                });
+
+
+            incomingPeerConnectionsRef.current
+                .clear();
+
+
+            /*
+             * Clear remote streams.
+             */
 
             remoteStreamsRef.current.clear();
 
-            pendingCandidatesRef.current.clear();
+
+            /*
+             * Clear ICE.
+
+             */
+
+            pendingCandidatesRef.current
+                .clear();
+
+
+            /*
+             * Clear remote videos.
+             */
+
+            remoteVideoRefs.current
+                .forEach((video) => {
+
+                    if (video) {
+
+                        video.srcObject =
+                            null;
+
+                    }
+
+                });
+
 
             remoteVideoRefs.current.clear();
+
+
+            /*
+             * Clear local video.
+             */
+
+            if (
+                localVideoRef.current
+            ) {
+
+                localVideoRef.current
+                    .srcObject =
+                    null;
+
+            }
 
         };
 
@@ -1809,7 +2074,7 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * UI
+     * DISABLED
      * =====================================================
      */
 
@@ -1820,12 +2085,39 @@ function ScreenShare({
     }
 
 
-    return (
-        <>
+    /*
+     * IMPORTANT:
+     *
+     * When visible=false we hide the UI only.
+     * The component remains mounted.
+     *
+     * Therefore WebRTC connections continue.
+     */
 
-            {/* =========================================
-                SCREEN SHARE BUTTON
-            ========================================= */}
+    if (!visible) {
+
+        return null;
+
+    }
+
+
+    /*
+     * =====================================================
+     * UI
+     * =====================================================
+     */
+
+    const hasRemoteScreens =
+        remoteParticipants.length > 0;
+
+
+    return (
+        <div className="rtc-screen-share-container">
+
+
+            {/* =================================================
+                SHARE SCREEN BUTTON
+            ================================================= */}
 
             <button
                 type="button"
@@ -1858,134 +2150,293 @@ function ScreenShare({
             </button>
 
 
-            {/* =========================================
-                REMOTE SCREEN(S)
-            ========================================= */}
+            {/* =================================================
+                SCREEN SHARE VIEWER
+            ================================================= */}
 
-            {remoteSharing &&
-                remoteParticipants.length >
-                    0 && (
+            {(isSharing ||
+                hasRemoteScreens) && (
 
-                    <div className="rtc-screen-share-viewer">
-
-                        <div className="rtc-screen-share-viewer-header">
-
-                            <span>
-                                Screen sharing
-                            </span>
-
-                            <span className="rtc-screen-share-live">
-                                LIVE
-                            </span>
-
-                        </div>
+                <div className="rtc-screen-share-viewer">
 
 
-                        <div className="rtc-screen-share-videos">
+                    {/* =========================================
+                        VIEWER HEADER
+                    ========================================= */}
 
-                            {remoteParticipants.map(
-                                (
-                                    remoteUserId
-                                ) => (
+                    <div className="rtc-screen-share-viewer-header">
+
+                        <span>
+                            Screen sharing
+                        </span>
+
+                        <span className="rtc-screen-share-live">
+                            LIVE
+                        </span>
+
+                    </div>
+
+
+                    {/* =========================================
+                        SCREEN CARDS
+                    ========================================= */}
+
+                    <div className="rtc-screen-share-videos">
+
+
+                        {/* =====================================
+                            MY SCREEN
+                        ===================================== */}
+
+                        {isSharing && (
+
+                            <div className="rtc-screen-share-card">
+
+
+                                <div className="rtc-screen-share-card-header">
+
+                                    <span className="rtc-screen-share-user-name">
+                                        You
+                                    </span>
+
+
+                                    <div className="rtc-screen-share-card-actions">
+
+                                        <button
+                                            type="button"
+                                            className="danger"
+                                            onClick={() =>
+                                                stopSharing()
+                                            }
+                                            title="Stop sharing"
+                                            aria-label="Stop sharing"
+                                        >
+                                            ✕
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+
+                                <video
+                                    ref={localVideoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="rtc-screen-share-video"
+                                />
+
+                            </div>
+
+                        )}
+
+
+                        {/* =====================================
+                            REMOTE SCREENS
+                        ===================================== */}
+
+                        {remoteParticipants.map(
+                            (remoteUserId) => {
+
+                                const isHidden =
+                                    hiddenRemoteShares.has(
+                                        remoteUserId
+                                    );
+
+
+                                return (
 
                                     <div
                                         key={
                                             remoteUserId
                                         }
-                                        className="rtc-screen-share-video-wrapper"
+                                        className={`rtc-screen-share-card ${
+                                            isHidden
+                                                ? "hidden"
+                                                : ""
+                                        }`}
                                     >
 
-                                        <video
-                                            ref={(
-                                                element
-                                            ) => {
 
-                                                if (
+                                        {/* CARD HEADER */}
+
+                                        <div className="rtc-screen-share-card-header">
+
+                                            <span className="rtc-screen-share-user-name">
+                                                {remoteUserId}
+                                            </span>
+
+
+                                            <div className="rtc-screen-share-card-actions">
+
+
+                                                {/* HIDE */}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        toggleRemoteScreen(
+                                                            remoteUserId
+                                                        )
+                                                    }
+                                                    title={
+                                                        isHidden
+                                                            ? "Show screen"
+                                                            : "Hide screen"
+                                                    }
+                                                    aria-label={
+                                                        isHidden
+                                                            ? "Show screen"
+                                                            : "Hide screen"
+                                                    }
+                                                >
+
+                                                    {isHidden
+                                                        ? "◉"
+                                                        : "◌"}
+
+                                                </button>
+
+
+                                                {/* CLOSE FOR ME */}
+
+                                                <button
+                                                    type="button"
+                                                    className="danger"
+                                                    onClick={() =>
+                                                        closeRemoteScreen(
+                                                            remoteUserId
+                                                        )
+                                                    }
+                                                    title="Close screen for me"
+                                                    aria-label="Close screen for me"
+                                                >
+
+                                                    ✕
+
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        {/* VIDEO */}
+
+                                        {!isHidden && (
+
+                                            <video
+                                                ref={(
                                                     element
-                                                ) {
+                                                ) => {
 
-                                                    remoteVideoRefs.current
-                                                        .set(
-                                                            remoteUserId,
-                                                            element
-                                                        );
+                                                    if (
+                                                        element
+                                                    ) {
 
-
-                                                    /*
-                                                     * If stream already
-                                                     * exists, attach it
-                                                     * immediately.
-                                                     */
-
-                                                    const stream =
-                                                        remoteStreamsRef.current
-                                                            .get(
-                                                                remoteUserId
+                                                        remoteVideoRefs.current
+                                                            .set(
+                                                                remoteUserId,
+                                                                element
                                                             );
 
 
-                                                    if (
-                                                        stream &&
-                                                        element.srcObject !==
-                                                            stream
-                                                    ) {
-
-                                                        element.srcObject =
-                                                            stream;
+                                                        const stream =
+                                                            remoteStreamsRef.current
+                                                                .get(
+                                                                    remoteUserId
+                                                                );
 
 
-                                                        element
-                                                            .play()
-                                                            .catch(
-                                                                (
-                                                                    error
-                                                                ) => {
+                                                        if (
+                                                            stream &&
+                                                            element.srcObject !==
+                                                                stream
+                                                        ) {
 
-                                                                    console.error(
-                                                                        "REMOTE VIDEO PLAY FAILED:",
+                                                            element.srcObject =
+                                                                stream;
+
+
+                                                            element
+                                                                .play()
+                                                                .catch(
+                                                                    (
                                                                         error
-                                                                    );
+                                                                    ) => {
 
-                                                                }
+                                                                        console.error(
+                                                                            "REMOTE VIDEO PLAY FAILED:",
+                                                                            {
+                                                                                remoteUserId,
+                                                                                error,
+                                                                            }
+                                                                        );
+
+                                                                    }
+                                                                );
+
+                                                        }
+
+                                                    } else {
+
+                                                        remoteVideoRefs.current
+                                                            .delete(
+                                                                remoteUserId
                                                             );
 
                                                     }
 
-                                                } else {
+                                                }}
+                                                autoPlay
+                                                playsInline
+                                                muted
+                                                className="rtc-screen-share-video"
+                                            />
 
-                                                    remoteVideoRefs.current
-                                                        .delete(
+                                        )}
+
+
+                                        {/* HIDDEN STATE */}
+
+                                        {isHidden && (
+
+                                            <div className="rtc-screen-share-hidden">
+
+                                                <span>
+                                                    Screen hidden
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        toggleRemoteScreen(
                                                             remoteUserId
-                                                        );
+                                                        )
+                                                    }
+                                                >
+                                                    Show
+                                                </button>
 
-                                                }
+                                            </div>
 
-                                            }}
-                                            autoPlay
-                                            playsInline
-                                            muted
-                                            className="rtc-screen-share-video"
-                                        />
-
-
-                                        <span className="rtc-screen-share-user">
-
-                                            {remoteUserId}
-
-                                        </span>
+                                        )}
 
                                     </div>
 
-                                )
-                            )}
+                                );
 
-                        </div>
+                            }
+                        )}
 
                     </div>
 
-                )}
+                </div>
 
-        </>
+            )}
+
+        </div>
     );
 }
 

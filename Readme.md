@@ -1295,12 +1295,9 @@ Announcemnt services
 
 connecting Cassndra
 
-1. docker destop container active
-
+1.  docker destop container active
 terminal
-2. docker start cassandra-dev
-
-3. start cqlsh
+2.  docker start cassandra-dev
+3.  start cqlsh
 docker exec -it cassandra-dev cqlsh
-4.
-use navriti;
+4.  use navriti;
