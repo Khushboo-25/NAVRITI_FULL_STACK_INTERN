@@ -162,7 +162,7 @@ function ChatWindow({
                 <ScreenShare
                     conversationId={selectedConversation.conversationId}
                     currentUser={currentUser}
-                    enabled={true}
+                    participantIds={users}
                 />
 
 

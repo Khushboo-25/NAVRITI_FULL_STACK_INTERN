@@ -171,32 +171,59 @@ export function sendAnnouncementIceCandidate(
     );
 }
 
-export function sendScreenShareOffer(conversationId, userId, offer) {
-    getSocket().emit("screenShare:offer", {
-        conversationId,
-        userId,
-        offer,
-    });
+
+
+export function sendScreenShareOffer(
+    conversationId,
+    userId,
+    targetUserId,
+    offer
+) {
+    getSocket().emit(
+        "screenShare:offer",
+        {
+            conversationId,
+            userId,
+            targetUserId,
+            offer,
+        }
+    );
 }
 
-export function sendScreenShareAnswer(conversationId, userId, answer) {
-    getSocket().emit("screenShare:answer", {
-        conversationId,
-        userId,
-        answer,
-    });
+
+export function sendScreenShareAnswer(
+    conversationId,
+    userId,
+    targetUserId,
+    answer
+) {
+    getSocket().emit(
+        "screenShare:answer",
+        {
+            conversationId,
+            userId,
+            targetUserId,
+            answer,
+        }
+    );
 }
+
 
 export function sendScreenShareIceCandidate(
     conversationId,
     userId,
+    targetUserId,
     candidate
 ) {
-    getSocket().emit("screenShare:ice-candidate", {
-        conversationId,
-        userId,
-        candidate,
-    });
+    getSocket().emit(
+        "screenShare:ice-candidate",
+        {
+            conversationId,
+            userId,
+            targetUserId,
+            candidate,
+        }
+    );
 }
 
 export function notifyScreenShareStarted(conversationId, userId) {

@@ -1,18 +1,15 @@
 .rtc-screen-share-button {
     width: 38px;
     height: 38px;
-
     flex-shrink: 0;
 
     border: none;
     border-radius: 9px;
 
     background: transparent;
-
     color: #69707d;
 
     font-size: 17px;
-
     cursor: pointer;
 
     transition:
@@ -21,18 +18,15 @@
         transform 0.15s ease;
 }
 
-
 .rtc-screen-share-button:hover {
     background: #eef0ff;
     color: #6366f1;
 }
 
-
 .rtc-screen-share-button.active {
     background: #6366f1;
     color: white;
 }
-
 
 .rtc-screen-share-button:active {
     transform: scale(0.92);
@@ -63,11 +57,13 @@
 }
 
 
+/* =====================================================
+   VIEWER HEADER
+   ===================================================== */
+
 .rtc-screen-share-viewer-header {
     display: flex;
-
     align-items: center;
-
     justify-content: space-between;
 
     padding: 9px 12px;
@@ -78,6 +74,10 @@
 }
 
 
+/* =====================================================
+   LIVE INDICATOR
+   ===================================================== */
+
 .rtc-screen-share-live {
     font-size: 10px;
 
@@ -87,18 +87,126 @@
 }
 
 
+/* =====================================================
+   MULTIPLE SCREEN VIDEOS
+   ===================================================== */
+
+.rtc-screen-share-videos {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(280px, 1fr)
+        );
+
+    gap: 8px;
+
+    padding: 8px;
+
+    max-height: 55vh;
+
+    overflow-y: auto;
+}
+
+
+/* =====================================================
+   INDIVIDUAL SCREEN
+   ===================================================== */
+
+.rtc-screen-share-video-wrapper {
+    position: relative;
+
+    min-width: 0;
+
+    background: #000;
+
+    border-radius: 8px;
+
+    overflow: hidden;
+
+    aspect-ratio: 16 / 9;
+}
+
+
+/* =====================================================
+   SCREEN VIDEO
+   ===================================================== */
+
 .rtc-screen-share-video {
     display: block;
 
     width: 100%;
-
-    height: auto;
-
-    min-height: 200px;
-
-    max-height: 55vh;
+    height: 100%;
 
     object-fit: contain;
 
     background: #000;
+}
+
+
+/* =====================================================
+   SHARER NAME
+   ===================================================== */
+
+.rtc-screen-share-user {
+    position: absolute;
+
+    left: 8px;
+    bottom: 8px;
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background: rgba(0, 0, 0, 0.65);
+
+    color: white;
+
+    font-size: 10px;
+
+    line-height: 1;
+
+    pointer-events: none;
+}
+
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
+
+.rtc-screen-share-videos::-webkit-scrollbar {
+    width: 6px;
+}
+
+.rtc-screen-share-videos::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+
+    border-radius: 10px;
+}
+
+.rtc-screen-share-videos::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+/* =====================================================
+   SMALL SCREENS
+   ===================================================== */
+
+@media (max-width: 600px) {
+
+    .rtc-screen-share-viewer {
+        top: 70px;
+
+        left: 8px;
+        right: 8px;
+    }
+
+    .rtc-screen-share-videos {
+        grid-template-columns: 1fr;
+
+        max-height: 50vh;
+    }
+
 }

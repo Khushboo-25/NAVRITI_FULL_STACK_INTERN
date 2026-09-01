@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
 import { getSocket } from "../../services/socket";
 
@@ -25,9 +30,9 @@ const RTC_CONFIG = {
 function ScreenShare({
     conversationId,
     currentUser,
+    participantIds = [],
     enabled = true,
 }) {
-    
 
     const [isSharing, setIsSharing] =
         useState(false);
@@ -36,20 +41,68 @@ function ScreenShare({
         useState(false);
 
 
-    const peerConnectionRef =
-        useRef(null);
+    /*
+     * =====================================================
+     * One PeerConnection per remote participant
+     *
+     * user-8  -> RTCPeerConnection
+     * user-13 -> RTCPeerConnection
+     * user-14 -> RTCPeerConnection
+     * =====================================================
+     */
+
+    const peerConnectionsRef =
+        useRef(new Map());
+
+
+    /*
+     * =====================================================
+     * One MediaStream per remote participant
+     * =====================================================
+     */
+
+    const remoteStreamsRef =
+        useRef(new Map());
+
+
+    /*
+     * =====================================================
+     * ICE candidates per remote participant
+     * =====================================================
+     */
+
+    const pendingCandidatesRef =
+        useRef(new Map());
+
+
+    /*
+     * =====================================================
+     * Video element per remote participant
+     * =====================================================
+     */
+
+    const remoteVideoRefs =
+        useRef(new Map());
+
+
+    /*
+     * =====================================================
+     * Local screen stream
+     * =====================================================
+     */
 
     const localStreamRef =
         useRef(null);
 
-    const remoteStreamRef =
-        useRef(null);
 
-    const remoteVideoRef =
-        useRef(null);
+    /*
+     * =====================================================
+     * Remote participants currently displaying screen
+     * =====================================================
+     */
 
-    const pendingCandidatesRef =
-        useRef([]);
+    const [remoteParticipants, setRemoteParticipants] =
+        useState([]);
 
 
     const userId =
@@ -58,168 +111,785 @@ function ScreenShare({
 
     /*
      * =====================================================
-     * Close peer connection
+     * NORMALIZE PARTICIPANT IDS
      * =====================================================
      */
 
-    const closePeerConnection =
+    const getParticipantIds =
         useCallback(() => {
 
-            if (peerConnectionRef.current) {
+            return participantIds
+                .map((participant) => {
 
-                peerConnectionRef.current.ontrack = null;
-                peerConnectionRef.current.onicecandidate = null;
+                    if (
+                        typeof participant ===
+                        "string"
+                    ) {
+                        return participant;
+                    }
 
-                peerConnectionRef.current.close();
+                    return (
+                        participant?.userId ??
+                        participant?.user_id ??
+                        participant?.id
+                    );
 
-                peerConnectionRef.current = null;
-            }
+                })
+                .filter(Boolean)
+                .map((id) =>
+                    id.toString()
+                )
+                .filter(
+                    (id) =>
+                        id !==
+                        userId?.toString()
+                );
 
-            remoteStreamRef.current = null;
+        }, [
+            participantIds,
+            userId,
+        ]);
 
-            pendingCandidatesRef.current = [];
+
+    /*
+     * =====================================================
+     * REMOVE ONE PEER
+     * =====================================================
+     */
+
+    const removePeerConnection =
+        useCallback(
+            (remoteUserId) => {
+
+                const key =
+                    remoteUserId?.toString();
+
+                if (!key) {
+                    return;
+                }
+
+
+                console.log(
+                    "Removing screen-share peer:",
+                    key
+                );
+
+
+                const pc =
+                    peerConnectionsRef.current
+                        .get(key);
+
+
+                if (pc) {
+
+                    pc.ontrack = null;
+
+                    pc.onicecandidate =
+                        null;
+
+                    pc.onconnectionstatechange =
+                        null;
+
+                    pc.close();
+
+                    peerConnectionsRef.current
+                        .delete(key);
+
+                }
+
+
+                remoteStreamsRef.current
+                    .delete(key);
+
+
+                pendingCandidatesRef.current
+                    .delete(key);
+
+
+                remoteVideoRefs.current
+                    .delete(key);
+
+
+                setRemoteParticipants(
+                    (current) => {
+
+                        const updated =
+                            current.filter(
+                                (id) =>
+                                    id !== key
+                            );
+
+
+                        /*
+                         * Hide viewer only when
+                         * the LAST remote peer is gone.
+                         */
+
+                        if (
+                            updated.length ===
+                            0
+                        ) {
+
+                            setRemoteSharing(
+                                false
+                            );
+
+                        }
+
+
+                        return updated;
+
+                    }
+                );
+
+            },
+            []
+        );
+
+
+    /*
+     * =====================================================
+     * CLOSE ALL PEER CONNECTIONS
+     * =====================================================
+     */
+
+    const closeAllPeerConnections =
+        useCallback(() => {
+
+            console.log(
+                "Closing all screen-share peer connections"
+            );
+
+
+            peerConnectionsRef.current
+                .forEach((pc) => {
+
+                    pc.ontrack = null;
+
+                    pc.onicecandidate =
+                        null;
+
+                    pc.onconnectionstatechange =
+                        null;
+
+                    pc.close();
+
+                });
+
+
+            peerConnectionsRef.current.clear();
+
+            remoteStreamsRef.current.clear();
+
+            pendingCandidatesRef.current.clear();
+
+            remoteVideoRefs.current.clear();
+
+            setRemoteParticipants([]);
+
+            setRemoteSharing(false);
 
         }, []);
 
 
     /*
      * =====================================================
-     * Create Peer Connection
+     * CREATE PEER CONNECTION FOR ONE USER
      * =====================================================
      */
 
     const createPeerConnection =
-        useCallback(() => {
+        useCallback(
+            (remoteUserId) => {
 
-            const pc =
-                new RTCPeerConnection(
-                    RTC_CONFIG
-                );
+                const key =
+                    remoteUserId?.toString();
 
-
-            /*
-             * ICE
-             */
-
-            pc.onicecandidate =
-                (event) => {
-
-                    if (!event.candidate) {
-                        return;
-                    }
-
-                    sendScreenShareIceCandidate(
-                        conversationId,
-                        userId,
-                        event.candidate
-                    );
-                };
-
-
-            /*
-             * REMOTE SCREEN TRACK
-             */
-
-            pc.ontrack = (event) => {
-                console.log(
-                    "REMOTE SCREEN TRACK RECEIVED",
-                    event
-                );
-
-                let stream = event.streams?.[0];
-
-                if (!stream) {
-                    if (!remoteStreamRef.current) {
-                        remoteStreamRef.current = new MediaStream();
-                    }
-
-                    stream = remoteStreamRef.current;
-
-                    if (
-                        !stream
-                            .getTracks()
-                            .some(
-                                (track) =>
-                                    track.id === event.track.id
-                            )
-                    ) {
-                        stream.addTrack(event.track);
-                    }
+                if (!key) {
+                    return null;
                 }
 
-                remoteStreamRef.current = stream;
 
-                setRemoteSharing(true);
+                /*
+                 * Reuse existing PC.
+                 */
 
-                // IMPORTANT:
-                // React may not have rendered <video> yet.
-                // Attach stream after render.
-                setTimeout(() => {
-                    if (remoteVideoRef.current) {
-                        remoteVideoRef.current.srcObject = stream;
-
-                        remoteVideoRef.current
-                            .play()
-                            .then(() => {
-                                console.log(
-                                    "REMOTE SCREEN VIDEO PLAYING"
-                                );
-                            })
-                            .catch((error) => {
-                                console.error(
-                                    "REMOTE VIDEO PLAY FAILED",
-                                    error
-                                );
-                            });
-                    }
-                }, 0);
-            };
+                const existing =
+                    peerConnectionsRef.current
+                        .get(key);
 
 
-            pc.onconnectionstatechange =
-                () => {
+                if (existing) {
 
-                    console.log(
-                        "Screen share connection:",
-                        pc.connectionState
+                    return existing;
+
+                }
+
+
+                console.log(
+                    "Creating screen-share peer connection:",
+                    key
+                );
+
+
+                const pc =
+                    new RTCPeerConnection(
+                        RTC_CONFIG
                     );
 
 
-                    if (
-                        pc.connectionState ===
-                            "failed" ||
-                        pc.connectionState ===
-                            "closed" ||
-                        pc.connectionState ===
-                            "disconnected"
-                    ) {
+                /*
+                 * Create ICE queue for this user.
+                 */
+
+                if (
+                    !pendingCandidatesRef.current
+                        .has(key)
+                ) {
+
+                    pendingCandidatesRef.current
+                        .set(
+                            key,
+                            []
+                        );
+
+                }
+
+
+                /*
+                 * =================================================
+                 * ICE CANDIDATE
+                 * =================================================
+                 */
+
+                pc.onicecandidate =
+                    (event) => {
 
                         if (
-                            peerConnectionRef.current ===
-                            pc
+                            !event.candidate
                         ) {
 
-                            closePeerConnection();
+                            return;
 
-                            setRemoteSharing(
-                                false
-                            );
                         }
+
+
+                        console.log(
+                            "Sending screen-share ICE:",
+                            {
+                                from: userId,
+                                to: key,
+                            }
+                        );
+
+
+                        sendScreenShareIceCandidate(
+                            conversationId,
+                            userId,
+                            key,
+                            event.candidate
+                        );
+
+                    };
+
+
+                /*
+                 * =================================================
+                 * REMOTE TRACK
+                 * =================================================
+                 */
+
+                pc.ontrack =
+                    (event) => {
+
+                        console.log(
+                            "REMOTE SCREEN TRACK RECEIVED:",
+                            {
+                                from: key,
+                                event,
+                            }
+                        );
+
+
+                        let stream =
+                            event.streams?.[0];
+
+
+                        /*
+                         * Fallback MediaStream.
+                         */
+
+                        if (!stream) {
+
+                            stream =
+                                remoteStreamsRef.current
+                                    .get(key);
+
+
+                            if (!stream) {
+
+                                stream =
+                                    new MediaStream();
+
+                                remoteStreamsRef.current
+                                    .set(
+                                        key,
+                                        stream
+                                    );
+
+                            }
+
+
+                            const alreadyAdded =
+                                stream
+                                    .getTracks()
+                                    .some(
+                                        (track) =>
+                                            track.id ===
+                                            event.track.id
+                                    );
+
+
+                            if (
+                                !alreadyAdded
+                            ) {
+
+                                stream.addTrack(
+                                    event.track
+                                );
+
+                            }
+
+                        } else {
+
+                            remoteStreamsRef.current
+                                .set(
+                                    key,
+                                    stream
+                                );
+
+                        }
+
+
+                        /*
+                         * Add this user to
+                         * visible remote screens.
+                         */
+
+                        setRemoteParticipants(
+                            (current) => {
+
+                                if (
+                                    current.includes(
+                                        key
+                                    )
+                                ) {
+
+                                    return current;
+
+                                }
+
+
+                                return [
+                                    ...current,
+                                    key,
+                                ];
+
+                            }
+                        );
+
+
+                        /*
+                         * IMPORTANT:
+                         *
+                         * This makes the viewer
+                         * actually render.
+                         */
+
+                        setRemoteSharing(
+                            true
+                        );
+
+
+                        /*
+                         * Attach stream after
+                         * React renders <video>.
+                         */
+
+                        setTimeout(() => {
+
+                            const video =
+                                remoteVideoRefs.current
+                                    .get(key);
+
+
+                            if (!video) {
+
+                                console.warn(
+                                    "Remote video element not ready:",
+                                    key
+                                );
+
+                                return;
+
+                            }
+
+
+                            video.srcObject =
+                                stream;
+
+
+                            video.play()
+                                .then(() => {
+
+                                    console.log(
+                                        "REMOTE SCREEN VIDEO PLAYING:",
+                                        key
+                                    );
+
+                                })
+                                .catch(
+                                    (error) => {
+
+                                        console.error(
+                                            "REMOTE VIDEO PLAY FAILED:",
+                                            {
+                                                userId: key,
+                                                error,
+                                            }
+                                        );
+
+                                    }
+                                );
+
+                        }, 0);
+
+
+                        /*
+                         * Remote track ended.
+                         */
+
+                        event.track.onended =
+                            () => {
+
+                                console.log(
+                                    "Remote screen track ended:",
+                                    key
+                                );
+
+
+                                removePeerConnection(
+                                    key
+                                );
+
+                            };
+
+                    };
+
+
+                /*
+                 * =================================================
+                 * CONNECTION STATE
+                 * =================================================
+                 */
+
+                pc.onconnectionstatechange =
+                    () => {
+
+                        console.log(
+                            "Screen-share connection:",
+                            {
+                                remoteUserId: key,
+                                state:
+                                    pc.connectionState,
+                            }
+                        );
+
+
+                        if (
+                            pc.connectionState ===
+                                "failed" ||
+                            pc.connectionState ===
+                                "closed" ||
+                            pc.connectionState ===
+                                "disconnected"
+                        ) {
+
+                            if (
+                                peerConnectionsRef.current
+                                    .get(key) ===
+                                pc
+                            ) {
+
+                                removePeerConnection(
+                                    key
+                                );
+
+                            }
+
+                        }
+
+                    };
+
+
+                /*
+                 * Save PC using remote user
+                 * as the Map key.
+                 */
+
+                peerConnectionsRef.current.set(
+                    key,
+                    pc
+                );
+
+
+                return pc;
+
+            },
+            [
+                conversationId,
+                userId,
+                removePeerConnection,
+            ]
+        );
+
+
+    /*
+     * =====================================================
+     * START SCREEN SHARING
+     * =====================================================
+     */
+
+    const startSharing =
+        async () => {
+
+            if (
+                !conversationId ||
+                !userId ||
+                isSharing
+            ) {
+
+                return;
+
+            }
+
+
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices
+                    .getDisplayMedia
+            ) {
+
+                console.error(
+                    "Screen sharing is not supported."
+                );
+
+                return;
+
+            }
+
+
+            try {
+
+                console.log(
+                    "SCREEN SHARE CLICKED:",
+                    {
+                        conversationId,
+                        userId,
                     }
-                };
+                );
 
 
-            peerConnectionRef.current =
-                pc;
+                /*
+                 * Get screen ONCE.
+                 */
+
+                const stream =
+                    await navigator
+                        .mediaDevices
+                        .getDisplayMedia({
+                            video: {
+                                cursor: "always",
+                            },
+                            audio: false,
+                        });
 
 
-            return pc;
+                console.log(
+                    "SCREEN CAPTURE ACQUIRED:",
+                    stream
+                );
 
-        }, [
-            conversationId,
-            userId,
-            closePeerConnection,
-        ]);
+
+                localStreamRef.current =
+                    stream;
+
+
+                setIsSharing(true);
+
+
+                /*
+                 * Browser native Stop sharing.
+                 */
+
+                stream
+                    .getTracks()
+                    .forEach(
+                        (track) => {
+
+                            track.onended =
+                                () => {
+
+                                    console.log(
+                                        "Browser stopped screen sharing"
+                                    );
+
+
+                                    stopSharing();
+
+                                };
+
+                        }
+                    );
+
+
+                /*
+                 * Get every participant except
+                 * current user.
+                 */
+
+                const targets =
+                    getParticipantIds();
+
+
+                console.log(
+                    "SCREEN SHARE TARGETS:",
+                    targets
+                );
+
+
+                if (!targets.length) {
+
+                    console.warn(
+                        "No remote participants available for screen sharing."
+                    );
+
+                    return;
+
+                }
+
+
+                /*
+                 * Notify conversation.
+                 */
+
+                notifyScreenShareStarted(
+                    conversationId,
+                    userId
+                );
+
+
+                /*
+                 * =================================================
+                 * ONE PEER CONNECTION PER PARTICIPANT
+                 * =================================================
+                 */
+
+                for (
+                    const targetUserId
+                    of targets
+                ) {
+
+                    try {
+
+                        console.log(
+                            "Creating screen-share connection to:",
+                            targetUserId
+                        );
+
+
+                        const pc =
+                            createPeerConnection(
+                                targetUserId
+                            );
+
+
+                        if (!pc) {
+
+                            continue;
+
+                        }
+
+
+                        /*
+                         * Add same screen track
+                         * to this peer connection.
+                         */
+
+                        stream
+                            .getTracks()
+                            .forEach(
+                                (track) => {
+
+                                    pc.addTrack(
+                                        track,
+                                        stream
+                                    );
+
+                                }
+                            );
+
+
+                        /*
+                         * Create offer.
+                         */
+
+                        const offer =
+                            await pc.createOffer();
+
+
+                        await pc.setLocalDescription(
+                            offer
+                        );
+
+
+                        console.log(
+                            "SENDING SCREEN OFFER:",
+                            {
+                                from: userId,
+                                to: targetUserId,
+                            }
+                        );
+
+
+                        sendScreenShareOffer(
+                            conversationId,
+                            userId,
+                            targetUserId,
+                            offer
+                        );
+
+                    } catch (error) {
+
+                        console.error(
+                            `Failed to create screen-share connection for ${targetUserId}:`,
+                            error
+                        );
+
+                    }
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to start screen sharing:",
+                    error
+                );
+
+            }
+
+        };
 
 
     /*
@@ -236,6 +906,10 @@ function ScreenShare({
                     "Stopping screen share"
                 );
 
+
+                /*
+                 * Stop local screen.
+                 */
 
                 if (
                     localStreamRef.current
@@ -254,16 +928,26 @@ function ScreenShare({
                             }
                         );
 
+
                     localStreamRef.current =
                         null;
+
                 }
 
 
-                closePeerConnection();
+                /*
+                 * Close all PCs.
+                 */
+
+                closeAllPeerConnections();
 
 
                 setIsSharing(false);
 
+
+                /*
+                 * Tell other users.
+                 */
 
                 if (
                     notify &&
@@ -275,179 +959,16 @@ function ScreenShare({
                         conversationId,
                         userId
                     );
+
                 }
 
             },
             [
                 conversationId,
                 userId,
-                closePeerConnection,
+                closeAllPeerConnections,
             ]
         );
-
-
-    /*
-     * =====================================================
-     * START SCREEN SHARING
-     * =====================================================
-     */
-    
-
-    const startSharing =
-        async () => {
-
-            if (
-                !conversationId ||
-                !userId ||
-                isSharing
-            ) {
-
-                return;
-            }
-
-
-            if (
-                !navigator.mediaDevices ||
-                !navigator.mediaDevices
-                    .getDisplayMedia
-            ) {
-
-                console.error(
-                    "Screen sharing is not supported."
-                );
-
-                return;
-            }
-
-
-            try {
-                console.log("SCREEN SHARE CLICKED", {
-                    conversationId,
-                    userId,
-                    isSharing,
-                });
-                console.log(
-                    "Requesting screen..."
-                );
-
-
-                const stream =
-                    await navigator
-                        .mediaDevices
-                        .getDisplayMedia({
-                            
-                            video: {
-                                cursor: "always",
-                            },
-                            audio: false,
-                        });
-
-                console.log(
-                                "SCREEN CAPTURE ACQUIRED",
-                                stream
-                            );
-                console.log(
-                    "Screen selected:",
-                    stream
-                );
-
-
-                const pc =
-                    createPeerConnection();
-
-
-                /*
-                 * Add screen track
-                 */
-
-                stream
-                    .getTracks()
-                    .forEach(
-                        (track) => {
-
-                            pc.addTrack(
-                                track,
-                                stream
-                            );
-
-
-                            /*
-                             * Browser's native
-                             * "Stop sharing"
-                             */
-
-                            track.onended =
-                                () => {
-
-                                    console.log(
-                                        "Browser stopped screen sharing"
-                                    );
-
-                                    stopSharing();
-                                };
-
-                        }
-                    );
-
-
-                localStreamRef.current =
-                    stream;
-
-
-                setIsSharing(true);
-
-
-                /*
-                 * Tell receiver that sharing
-                 * has started.
-                 */
-
-                notifyScreenShareStarted(
-                    conversationId,
-                    userId
-                );
-
-
-                /*
-                 * Create offer
-                 */
-                console.log(
-                    "SENDING SCREEN OFFER",
-                    {
-                        conversationId,
-                        userId,
-                    }
-                );
-                const offer =
-                    await pc.createOffer();
-
-
-                await pc.setLocalDescription(
-                    offer
-                );
-
-
-                console.log(
-                    "SCREEN CAPTURE ACQUIRED",
-                    stream
-                );
-
-                sendScreenShareOffer(
-                    conversationId,
-                    userId,
-                    offer
-                );
-
-            } catch (error) {
-
-                console.error(
-                    "Failed to start screen sharing:",
-                    error
-                );
-
-            }
-
-        };
 
 
     /*
@@ -465,6 +986,7 @@ function ScreenShare({
         ) {
 
             return;
+
         }
 
 
@@ -473,123 +995,44 @@ function ScreenShare({
 
 
         /*
-         * -------------------------------------------------
+         * =================================================
          * RECEIVE OFFER
-         * -------------------------------------------------
+         * =================================================
          */
 
-        const handleOffer = async ({
-            userId: senderUserId,
-            offer,
-        }) => {
-
-            if (
-                senderUserId?.toString() ===
-                userId?.toString()
-            ) {
-                return;
-            }
-
-            try {
-
-                console.log(
-                    "RECEIVED SCREEN OFFER",
-                    {
-                        senderUserId,
-                        conversationId,
-                    }
-                );
-
-                closePeerConnection();
-
-                const pc =
-                    createPeerConnection();
-
-                await pc.setRemoteDescription(
-                    new RTCSessionDescription(offer)
-                );
-
-                /*
-                * Process ICE candidates that arrived
-                * before the offer.
-                */
-
-                const pendingCandidates = [
-                    ...pendingCandidatesRef.current,
-                ];
-
-                pendingCandidatesRef.current = [];
-
-                for (
-                    const candidate
-                    of pendingCandidates
-                ) {
-
-                    try {
-
-                        await pc.addIceCandidate(
-                            new RTCIceCandidate(candidate)
-                        );
-
-                        console.log(
-                            "PENDING SCREEN ICE ADDED"
-                        );
-
-                    } catch (error) {
-
-                        console.error(
-                            "Failed pending ICE:",
-                            error
-                        );
-                    }
-                }
-
-                /*
-                * Create answer
-                */
-
-                const answer =
-                    await pc.createAnswer();
-
-                await pc.setLocalDescription(
-                    answer
-                );
-
-                console.log(
-                    "SENDING SCREEN ANSWER",
-                    {
-                        conversationId,
-                        userId,
-                    }
-                );
-
-                sendScreenShareAnswer(
-                    conversationId,
-                    userId,
-                    answer
-                );
-
-            } catch (error) {
-
-                console.error(
-                    "Failed to handle screen share offer:",
-                    error
-                );
-            }
-        };
-
-
-        /*
-         * -------------------------------------------------
-         * RECEIVE ANSWER
-         * -------------------------------------------------
-         */
-
-        const handleAnswer =
+        const handleOffer =
             async ({
                 userId: senderUserId,
-                answer,
+                targetUserId,
+                offer,
             }) => {
+                 console.log("========== SCREEN OFFER RECEIVED ==========");
+                console.log({
+                    myUserId: userId,
+                    senderUserId,
+                    targetUserId,
+                    conversationId,
+                    hasOffer: !!offer,
+                });
+                console.log("==========================================");
+
+                /*
+                 * Ignore offers not meant for us.
+                 */
+
+                if (
+                    targetUserId?.toString() !==
+                    userId?.toString()
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Ignore own offer.
+                 */
 
                 if (
                     senderUserId?.toString() ===
@@ -597,27 +1040,243 @@ function ScreenShare({
                 ) {
 
                     return;
+
                 }
 
 
+                const remoteUserId =
+                    senderUserId.toString();
+
+
+                try {
+
+                    console.log(
+                        "RECEIVED SCREEN OFFER:",
+                        {
+                            from: remoteUserId,
+                            to: userId,
+                        }
+                    );
+
+
+                    /*
+                     * If an old PC exists for
+                     * this SAME user, close it.
+                     *
+                     * Do not touch other users.
+                     */
+
+                    const existing =
+                        peerConnectionsRef.current
+                            .get(
+                                remoteUserId
+                            );
+
+
+                    if (existing) {
+
+                        existing.ontrack =
+                            null;
+
+                        existing.onicecandidate =
+                            null;
+
+                        existing.onconnectionstatechange =
+                            null;
+
+                        existing.close();
+
+                        peerConnectionsRef.current
+                            .delete(
+                                remoteUserId
+                            );
+
+                    }
+
+
+                    /*
+                     * Create PC for this sender.
+                     */
+
+                    const pc =
+                        createPeerConnection(
+                            remoteUserId
+                        );
+
+
+                    if (!pc) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Set remote offer.
+                     */
+
+                    await pc.setRemoteDescription(
+                        new RTCSessionDescription(
+                            offer
+                        )
+                    );
+
+
+                    /*
+                     * Process ICE that arrived
+                     * before offer.
+                     */
+
+                    const pending =
+                        pendingCandidatesRef.current
+                            .get(
+                                remoteUserId
+                            ) || [];
+
+
+                    pendingCandidatesRef.current
+                        .set(
+                            remoteUserId,
+                            []
+                        );
+
+
+                    for (
+                        const candidate
+                        of pending
+                    ) {
+
+                        try {
+
+                            await pc.addIceCandidate(
+                                new RTCIceCandidate(
+                                    candidate
+                                )
+                            );
+
+
+                            console.log(
+                                "PENDING SCREEN ICE ADDED:",
+                                remoteUserId
+                            );
+
+                        } catch (error) {
+
+                            console.error(
+                                "FAILED PENDING ICE:",
+                                {
+                                    remoteUserId,
+                                    error,
+                                }
+                            );
+
+                        }
+
+                    }
+
+
+                    /*
+                     * Create answer.
+                     */
+
+                    const answer =
+                        await pc.createAnswer();
+
+
+                    await pc.setLocalDescription(
+                        answer
+                    );
+
+
+                    console.log(
+                        "SENDING SCREEN ANSWER:",
+                        {
+                            from: userId,
+                            to: remoteUserId,
+                        }
+                    );
+
+
+                    sendScreenShareAnswer(
+                        conversationId,
+                        userId,
+                        remoteUserId,
+                        answer
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Failed to handle screen share offer:",
+                        {
+                            remoteUserId,
+                            error,
+                        }
+                    );
+
+                }
+
+            };
+
+
+        /*
+         * =================================================
+         * RECEIVE ANSWER
+         * =================================================
+         */
+
+        const handleAnswer =
+            async ({
+                userId: senderUserId,
+                targetUserId,
+                answer,
+            }) => {
+
+                /*
+                 * Answer must be for us.
+                 */
+
+                if (
+                    targetUserId?.toString() !==
+                    userId?.toString()
+                ) {
+
+                    return;
+
+                }
+
+
+                const remoteUserId =
+                    senderUserId.toString();
+
+
                 const pc =
-                    peerConnectionRef.current;
+                    peerConnectionsRef.current
+                        .get(
+                            remoteUserId
+                        );
 
 
                 if (!pc) {
 
                     console.error(
-                        "No screen share peer connection"
+                        "No peer connection for screen-share answer:",
+                        remoteUserId
                     );
 
                     return;
+
                 }
 
 
                 try {
 
                     console.log(
-                        "Screen share answer received"
+                        "RECEIVED SCREEN ANSWER:",
+                        {
+                            from: remoteUserId,
+                            to: userId,
+                        }
                     );
 
 
@@ -628,28 +1287,60 @@ function ScreenShare({
                     );
 
 
-                    for (
-                        const candidate
-                        of pendingCandidatesRef.current
-                    ) {
+                    /*
+                     * Add ICE that arrived
+                     * before answer.
+                     */
 
-                        await pc.addIceCandidate(
-                            new RTCIceCandidate(
-                                candidate
-                            )
+                    const pending =
+                        pendingCandidatesRef.current
+                            .get(
+                                remoteUserId
+                            ) || [];
+
+
+                    pendingCandidatesRef.current
+                        .set(
+                            remoteUserId,
+                            []
                         );
 
+
+                    for (
+                        const candidate
+                        of pending
+                    ) {
+
+                        try {
+
+                            await pc.addIceCandidate(
+                                new RTCIceCandidate(
+                                    candidate
+                                )
+                            );
+
+                        } catch (error) {
+
+                            console.error(
+                                "FAILED PENDING ICE AFTER ANSWER:",
+                                {
+                                    remoteUserId,
+                                    error,
+                                }
+                            );
+
+                        }
+
                     }
-
-
-                    pendingCandidatesRef.current =
-                        [];
 
                 } catch (error) {
 
                     console.error(
                         "Failed to handle screen share answer:",
-                        error
+                        {
+                            remoteUserId,
+                            error,
+                        }
                     );
 
                 }
@@ -658,67 +1349,174 @@ function ScreenShare({
 
 
         /*
-         * -------------------------------------------------
+         * =================================================
          * RECEIVE ICE
-         * -------------------------------------------------
+         * =================================================
          */
 
-        const handleIceCandidate = async ({
-            userId: senderUserId,
-            candidate,
-        }) => {
-            if (
-                !candidate ||
-                senderUserId?.toString() ===
-                    userId?.toString()
-            ) {
-                return;
-            }
+        const handleIceCandidate =
+            async ({
+                userId: senderUserId,
+                targetUserId,
+                candidate,
+            }) => {
 
-            const pc =
-                peerConnectionRef.current;
+                /*
+                 * Only process ICE meant for us.
+                 */
 
-            if (!pc) {
-                pendingCandidatesRef.current.push(
-                    candidate
-                );
-                return;
-            }
-
-            try {
                 if (
-                    pc.remoteDescription &&
-                    pc.remoteDescription.type
+                    targetUserId?.toString() !==
+                    userId?.toString()
                 ) {
-                    await pc.addIceCandidate(
-                        new RTCIceCandidate(candidate)
-                    );
 
-                    console.log(
-                        "REMOTE SCREEN ICE ADDED"
-                    );
-                } else {
-                    pendingCandidatesRef.current.push(
-                        candidate
-                    );
+                    return;
 
-                    console.log(
-                        "SCREEN ICE QUEUED"
-                    );
                 }
-            } catch (error) {
-                console.error(
-                    "Failed to add ICE candidate:",
-                    error
-                );
-            }
-        };
+
+
+                if (!candidate) {
+
+                    return;
+
+                }
+
+
+                const remoteUserId =
+                    senderUserId.toString();
+
+
+                const pc =
+                    peerConnectionsRef.current
+                        .get(
+                            remoteUserId
+                        );
+
+
+                /*
+                 * PC doesn't exist yet.
+                 * Queue ICE for this specific user.
+                 */
+
+                if (!pc) {
+
+                    if (
+                        !pendingCandidatesRef.current
+                            .has(
+                                remoteUserId
+                            )
+                    ) {
+
+                        pendingCandidatesRef.current
+                            .set(
+                                remoteUserId,
+                                []
+                            );
+
+                    }
+
+
+                    pendingCandidatesRef.current
+                        .get(
+                            remoteUserId
+                        )
+                        .push(
+                            candidate
+                        );
+
+
+                    console.log(
+                        "SCREEN ICE QUEUED:",
+                        remoteUserId
+                    );
+
+
+                    return;
+
+                }
+
+
+                try {
+
+                    /*
+                     * Remote description already exists.
+                     */
+
+                    if (
+                        pc.remoteDescription &&
+                        pc.remoteDescription.type
+                    ) {
+
+                        await pc.addIceCandidate(
+                            new RTCIceCandidate(
+                                candidate
+                            )
+                        );
+
+
+                        console.log(
+                            "REMOTE SCREEN ICE ADDED:",
+                            remoteUserId
+                        );
+
+                    } else {
+
+                        /*
+                         * Queue until remote offer
+                         * is applied.
+                         */
+
+                        if (
+                            !pendingCandidatesRef.current
+                                .has(
+                                    remoteUserId
+                                )
+                        ) {
+
+                            pendingCandidatesRef.current
+                                .set(
+                                    remoteUserId,
+                                    []
+                                );
+
+                        }
+
+
+                        pendingCandidatesRef.current
+                            .get(
+                                remoteUserId
+                            )
+                            .push(
+                                candidate
+                            );
+
+
+                        console.log(
+                            "SCREEN ICE QUEUED:",
+                            remoteUserId
+                        );
+
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "Failed to add ICE candidate:",
+                        {
+                            remoteUserId,
+                            error,
+                        }
+                    );
+
+                }
+
+            };
 
 
         /*
-         * -------------------------------------------------
+         * =================================================
          * SCREEN SHARE STARTED
-         * -------------------------------------------------
+         * =================================================
          */
 
         const handleStarted =
@@ -732,20 +1530,22 @@ function ScreenShare({
                 ) {
 
                     return;
+
                 }
 
 
                 console.log(
-                    "Remote user started screen sharing"
+                    "REMOTE USER STARTED SCREEN SHARING:",
+                    senderUserId
                 );
 
             };
 
 
         /*
-         * -------------------------------------------------
+         * =================================================
          * SCREEN SHARE STOPPED
-         * -------------------------------------------------
+         * =================================================
          */
 
         const handleStopped =
@@ -759,31 +1559,32 @@ function ScreenShare({
                 ) {
 
                     return;
+
                 }
 
 
                 console.log(
-                    "Remote user stopped screen sharing"
+                    "REMOTE USER STOPPED SCREEN SHARING:",
+                    senderUserId
                 );
 
 
-                setRemoteSharing(false);
+                /*
+                 * Remove only this sender.
+                 */
 
-
-                if (
-                    remoteVideoRef.current
-                ) {
-
-                    remoteVideoRef.current.srcObject =
-                        null;
-
-                }
-
-
-                closePeerConnection();
+                removePeerConnection(
+                    senderUserId
+                );
 
             };
 
+
+        /*
+         * =================================================
+         * REGISTER LISTENERS
+         * =================================================
+         */
 
         socket.on(
             "screenShare:offer",
@@ -812,9 +1613,9 @@ function ScreenShare({
 
 
         /*
-         * -------------------------------------------------
-         * CLEANUP
-         * -------------------------------------------------
+         * =================================================
+         * CLEANUP LISTENERS
+         * =================================================
          */
 
         return () => {
@@ -844,22 +1645,6 @@ function ScreenShare({
                 handleStopped
             );
 
-
-            stopSharing(false);
-
-
-            setRemoteSharing(false);
-
-
-            if (
-                remoteVideoRef.current
-            ) {
-
-                remoteVideoRef.current.srcObject =
-                    null;
-
-            }
-
         };
 
     }, [
@@ -867,41 +1652,180 @@ function ScreenShare({
         conversationId,
         userId,
         createPeerConnection,
-        closePeerConnection,
-        stopSharing,
+        removePeerConnection,
     ]);
-        useEffect(() => {
-        if (
-            remoteSharing &&
-            remoteStreamRef.current &&
-            remoteVideoRef.current
-        ) {
-            remoteVideoRef.current.srcObject =
-                remoteStreamRef.current;
 
-            remoteVideoRef.current
-                .play()
-                .catch((error) => {
-                    console.error(
-                        "REMOTE VIDEO PLAY FAILED:",
-                        error
+
+    /*
+     * =====================================================
+     * ATTACH STREAMS AFTER VIDEO RENDERS
+     * =====================================================
+     */
+
+    useEffect(() => {
+
+        remoteParticipants.forEach(
+            (remoteUserId) => {
+
+                const stream =
+                    remoteStreamsRef.current
+                        .get(
+                            remoteUserId
+                        );
+
+
+                const video =
+                    remoteVideoRefs.current
+                        .get(
+                            remoteUserId
+                        );
+
+
+                if (
+                    stream &&
+                    video &&
+                    video.srcObject !==
+                        stream
+                ) {
+
+                    console.log(
+                        "ATTACHING REMOTE STREAM:",
+                        remoteUserId
                     );
-                });
-        }
-    }, [remoteSharing]);
 
+
+                    video.srcObject =
+                        stream;
+
+
+                    video.play()
+                        .then(() => {
+
+                            console.log(
+                                "REMOTE VIDEO PLAYING:",
+                                remoteUserId
+                            );
+
+                        })
+                        .catch(
+                            (error) => {
+
+                                console.error(
+                                    "REMOTE VIDEO PLAY FAILED:",
+                                    {
+                                        remoteUserId,
+                                        error,
+                                    }
+                                );
+
+                            }
+                        );
+
+                }
+
+            }
+        );
+
+    }, [
+        remoteParticipants,
+    ]);
+
+
+    /*
+     * =====================================================
+     * CLEANUP WHEN COMPONENT UNMOUNTS
+     * =====================================================
+     */
+
+    useEffect(() => {
+
+        return () => {
+
+            console.log(
+                "Cleaning up screen share component"
+            );
+
+
+            /*
+             * Stop local screen.
+             */
+
+            if (
+                localStreamRef.current
+            ) {
+
+                localStreamRef.current
+                    .getTracks()
+                    .forEach(
+                        (track) => {
+
+                            track.onended =
+                                null;
+
+                            track.stop();
+
+                        }
+                    );
+
+
+                localStreamRef.current =
+                    null;
+
+            }
+
+
+            /*
+             * Close every PC.
+             */
+
+            peerConnectionsRef.current
+                .forEach((pc) => {
+
+                    pc.ontrack = null;
+
+                    pc.onicecandidate =
+                        null;
+
+                    pc.onconnectionstatechange =
+                        null;
+
+                    pc.close();
+
+                });
+
+
+            peerConnectionsRef.current.clear();
+
+            remoteStreamsRef.current.clear();
+
+            pendingCandidatesRef.current.clear();
+
+            remoteVideoRefs.current.clear();
+
+        };
+
+    }, []);
+
+
+    /*
+     * =====================================================
+     * UI
+     * =====================================================
+     */
 
     if (!enabled) {
+
         return null;
+
     }
 
 
     return (
         <>
 
-            {/* ================================
+            {/* =========================================
                 SCREEN SHARE BUTTON
-            ================================= */}
+            ========================================= */}
 
             <button
                 type="button"
@@ -926,42 +1850,140 @@ function ScreenShare({
                         : "Share screen"
                 }
             >
+
                 {isSharing
                     ? "■"
                     : "▣"}
+
             </button>
 
 
-            {/* ================================
-                REMOTE SCREEN
-            ================================= */}
+            {/* =========================================
+                REMOTE SCREEN(S)
+            ========================================= */}
 
-            {remoteSharing && (
-                <div className="rtc-screen-share-viewer">
+            {remoteSharing &&
+                remoteParticipants.length >
+                    0 && (
 
-                    <div className="rtc-screen-share-viewer-header">
+                    <div className="rtc-screen-share-viewer">
 
-                        <span>
-                            Screen sharing
-                        </span>
+                        <div className="rtc-screen-share-viewer-header">
 
-                        <span className="rtc-screen-share-live">
-                            LIVE
-                        </span>
+                            <span>
+                                Screen sharing
+                            </span>
+
+                            <span className="rtc-screen-share-live">
+                                LIVE
+                            </span>
+
+                        </div>
+
+
+                        <div className="rtc-screen-share-videos">
+
+                            {remoteParticipants.map(
+                                (
+                                    remoteUserId
+                                ) => (
+
+                                    <div
+                                        key={
+                                            remoteUserId
+                                        }
+                                        className="rtc-screen-share-video-wrapper"
+                                    >
+
+                                        <video
+                                            ref={(
+                                                element
+                                            ) => {
+
+                                                if (
+                                                    element
+                                                ) {
+
+                                                    remoteVideoRefs.current
+                                                        .set(
+                                                            remoteUserId,
+                                                            element
+                                                        );
+
+
+                                                    /*
+                                                     * If stream already
+                                                     * exists, attach it
+                                                     * immediately.
+                                                     */
+
+                                                    const stream =
+                                                        remoteStreamsRef.current
+                                                            .get(
+                                                                remoteUserId
+                                                            );
+
+
+                                                    if (
+                                                        stream &&
+                                                        element.srcObject !==
+                                                            stream
+                                                    ) {
+
+                                                        element.srcObject =
+                                                            stream;
+
+
+                                                        element
+                                                            .play()
+                                                            .catch(
+                                                                (
+                                                                    error
+                                                                ) => {
+
+                                                                    console.error(
+                                                                        "REMOTE VIDEO PLAY FAILED:",
+                                                                        error
+                                                                    );
+
+                                                                }
+                                                            );
+
+                                                    }
+
+                                                } else {
+
+                                                    remoteVideoRefs.current
+                                                        .delete(
+                                                            remoteUserId
+                                                        );
+
+                                                }
+
+                                            }}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="rtc-screen-share-video"
+                                        />
+
+
+                                        <span className="rtc-screen-share-user">
+
+                                            {remoteUserId}
+
+                                        </span>
+
+                                    </div>
+
+                                )
+                            )}
+
+                        </div>
 
                     </div>
 
-
-                    <video
-                        ref={remoteVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="rtc-screen-share-video"
-                    />
-
-                </div>
-            )}
+                )}
 
         </>
     );

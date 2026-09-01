@@ -31,15 +31,18 @@ const notifyConversationParticipants = async (
     conversationId,
     latestMessage
 ) => {
+
     if (!conversationId) {
         return;
     }
 
     try {
+
         const participants =
             await getByConversationId(
                 conversationId
             );
+
 
         console.log(
             "REALTIME CONVERSATION UPDATE:",
@@ -51,6 +54,7 @@ const notifyConversationParticipants = async (
             }
         );
 
+
         participants.forEach(
             (participant) => {
 
@@ -58,6 +62,7 @@ const notifyConversationParticipants = async (
                     "EMITTING conversationUpdated TO:",
                     `user:${participant.user_id}`
                 );
+
 
                 io.to(
                     `user:${participant.user_id}`
@@ -68,15 +73,19 @@ const notifyConversationParticipants = async (
                         latestMessage,
                     }
                 );
+
             }
         );
 
     } catch (error) {
+
         console.error(
             "Failed to notify conversation participants:",
             error.message
         );
+
     }
+
 };
 
 
@@ -99,17 +108,25 @@ const socketHandler = (io) => {
                 "joinAnnouncementRTC",
                 ({ portalId, userId }) => {
 
-                    if (!portalId || !userId) {
+                    if (
+                        !portalId ||
+                        !userId
+                    ) {
+
                         return;
+
                     }
+
 
                     socket.join(
                         `announcement:${portalId}`
                     );
 
+
                     console.log(
                         `User ${userId} joined announcement RTC room: ${portalId}`
                     );
+
 
                     socket.to(
                         `announcement:${portalId}`
@@ -128,13 +145,20 @@ const socketHandler = (io) => {
                 "leaveAnnouncementRTC",
                 ({ portalId, userId }) => {
 
-                    if (!portalId || !userId) {
+                    if (
+                        !portalId ||
+                        !userId
+                    ) {
+
                         return;
+
                     }
+
 
                     socket.leave(
                         `announcement:${portalId}`
                     );
+
 
                     socket.to(
                         `announcement:${portalId}`
@@ -144,6 +168,7 @@ const socketHandler = (io) => {
                             userId,
                         }
                     );
+
 
                     console.log(
                         `User ${userId} left announcement RTC room: ${portalId}`
@@ -170,8 +195,11 @@ const socketHandler = (io) => {
                         !userId ||
                         !offer
                     ) {
+
                         return;
+
                     }
+
 
                     socket.to(
                         `announcement:${portalId}`
@@ -200,8 +228,11 @@ const socketHandler = (io) => {
                         !userId ||
                         !answer
                     ) {
+
                         return;
+
                     }
+
 
                     socket.to(
                         `announcement:${portalId}`
@@ -230,8 +261,11 @@ const socketHandler = (io) => {
                         !userId ||
                         !candidate
                     ) {
+
                         return;
+
                     }
+
 
                     socket.to(
                         `announcement:${portalId}`
@@ -248,12 +282,38 @@ const socketHandler = (io) => {
 
 
             // =========================================================
-            // One-to-one screen sharing WebRTC signaling
+            // Screen Share WebRTC signaling
+            //
+            // IMPORTANT:
+            //
+            // Screen sharing supports multiple participants.
+            //
+            // The sender creates one PeerConnection per target:
+            //
+            // sender
+            //   ├── PC -> user-8
+            //   ├── PC -> user-13
+            //   ├── PC -> user-14
+            //   └── PC -> user-15
+            //
+            // Signals are broadcast inside the conversation room.
+            // Each client uses targetUserId to decide whether it
+            // should process the signal.
+            // =========================================================
+
+
+            // =========================================================
+            // SCREEN SHARE OFFER
             // =========================================================
 
             socket.on(
                 "screenShare:offer",
-                ({ conversationId, userId, offer }) => {
+                ({
+                    conversationId,
+                    userId,
+                    targetUserId,
+                    offer,
+                }) => {
 
                     console.log(
                         "SCREEN SHARE OFFER:",
@@ -261,30 +321,62 @@ const socketHandler = (io) => {
                             socketId: socket.id,
                             conversationId,
                             userId,
+                            targetUserId,
                         }
                     );
 
-                    if (!conversationId || !userId || !offer) {
+
+                    if (
+                        !conversationId ||
+                        !userId ||
+                        !targetUserId ||
+                        !offer
+                    ) {
+
                         console.log(
                             "SCREEN SHARE OFFER INVALID"
                         );
+
                         return;
+
                     }
 
-                    socket.to(conversationId).emit(
+
+                    /*
+                     * Broadcast to everyone in the
+                     * conversation except sender.
+                     *
+                     * Receiver filters using targetUserId.
+                     */
+
+                    socket.to(
+                        conversationId
+                    ).emit(
                         "screenShare:offer",
                         {
+                            conversationId,
                             userId,
+                            targetUserId,
                             offer,
                         }
                     );
+
                 }
             );
 
 
+            // =========================================================
+            // SCREEN SHARE ANSWER
+            // =========================================================
+
             socket.on(
                 "screenShare:answer",
-                ({ conversationId, userId, answer }) => {
+                ({
+                    conversationId,
+                    userId,
+                    targetUserId,
+                    answer,
+                }) => {
 
                     console.log(
                         "SCREEN SHARE ANSWER:",
@@ -292,27 +384,63 @@ const socketHandler = (io) => {
                             socketId: socket.id,
                             conversationId,
                             userId,
+                            targetUserId,
                         }
                     );
 
-                    if (!conversationId || !userId || !answer) {
+
+                    if (
+                        !conversationId ||
+                        !userId ||
+                        !targetUserId ||
+                        !answer
+                    ) {
+
+                        console.log(
+                            "SCREEN SHARE ANSWER INVALID"
+                        );
+
                         return;
+
                     }
 
-                    socket.to(conversationId).emit(
+
+                    /*
+                     * Broadcast to everyone in the
+                     * conversation except sender.
+                     *
+                     * Original sender filters using
+                     * targetUserId.
+                     */
+
+                    socket.to(
+                        conversationId
+                    ).emit(
                         "screenShare:answer",
                         {
+                            conversationId,
                             userId,
+                            targetUserId,
                             answer,
                         }
                     );
+
                 }
             );
 
 
+            // =========================================================
+            // SCREEN SHARE ICE CANDIDATE
+            // =========================================================
+
             socket.on(
                 "screenShare:ice-candidate",
-                ({ conversationId, userId, candidate }) => {
+                ({
+                    conversationId,
+                    userId,
+                    targetUserId,
+                    candidate,
+                }) => {
 
                     console.log(
                         "SCREEN SHARE ICE:",
@@ -320,31 +448,64 @@ const socketHandler = (io) => {
                             socketId: socket.id,
                             conversationId,
                             userId,
+                            targetUserId,
                         }
                     );
+
 
                     if (
                         !conversationId ||
                         !userId ||
+                        !targetUserId ||
                         !candidate
                     ) {
+
+                        console.log(
+                            "SCREEN SHARE ICE INVALID"
+                        );
+
                         return;
+
                     }
 
-                    socket.to(conversationId).emit(
+
+                    /*
+                     * IMPORTANT:
+                     *
+                     * ICE also goes through the conversation
+                     * room so it follows the same signaling
+                     * architecture as offer/answer.
+                     *
+                     * Receiver uses targetUserId to select
+                     * the correct PeerConnection.
+                     */
+
+                    socket.to(
+                        conversationId
+                    ).emit(
                         "screenShare:ice-candidate",
                         {
+                            conversationId,
                             userId,
+                            targetUserId,
                             candidate,
                         }
                     );
+
                 }
             );
 
 
+            // =========================================================
+            // SCREEN SHARE STARTED
+            // =========================================================
+
             socket.on(
                 "screenShare:started",
-                ({ conversationId, userId }) => {
+                ({
+                    conversationId,
+                    userId,
+                }) => {
 
                     console.log(
                         "SCREEN SHARE STARTED:",
@@ -355,23 +516,41 @@ const socketHandler = (io) => {
                         }
                     );
 
-                    if (!conversationId || !userId) {
+
+                    if (
+                        !conversationId ||
+                        !userId
+                    ) {
+
                         return;
+
                     }
 
-                    socket.to(conversationId).emit(
+
+                    socket.to(
+                        conversationId
+                    ).emit(
                         "screenShare:started",
                         {
+                            conversationId,
                             userId,
                         }
                     );
+
                 }
             );
 
 
+            // =========================================================
+            // SCREEN SHARE STOPPED
+            // =========================================================
+
             socket.on(
                 "screenShare:stopped",
-                ({ conversationId, userId }) => {
+                ({
+                    conversationId,
+                    userId,
+                }) => {
 
                     console.log(
                         "SCREEN SHARE STOPPED:",
@@ -382,16 +561,27 @@ const socketHandler = (io) => {
                         }
                     );
 
-                    if (!conversationId || !userId) {
+
+                    if (
+                        !conversationId ||
+                        !userId
+                    ) {
+
                         return;
+
                     }
 
-                    socket.to(conversationId).emit(
+
+                    socket.to(
+                        conversationId
+                    ).emit(
                         "screenShare:stopped",
                         {
+                            conversationId,
                             userId,
                         }
                     );
+
                 }
             );
 
@@ -400,9 +590,10 @@ const socketHandler = (io) => {
             // Personal user room
             //
             // Frontend joins:
+            //
             // user:${userId}
             //
-            // This room is used for conversation list updates.
+            // Used for conversation list updates.
             // =========================================================
 
             socket.on(
@@ -413,9 +604,11 @@ const socketHandler = (io) => {
                         return;
                     }
 
+
                     socket.join(
                         `user:${userId}`
                     );
+
 
                     console.log(
                         `User ${userId} joined personal room`
@@ -437,9 +630,11 @@ const socketHandler = (io) => {
                         return;
                     }
 
+
                     socket.join(
                         conversationId
                     );
+
 
                     console.log(
                         `user ${socket.id} joined conversation: ${conversationId}`
@@ -474,6 +669,7 @@ const socketHandler = (io) => {
                             });
 
                             return;
+
                         }
 
 
@@ -502,10 +698,8 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
                          * Send message to everyone currently
                          * inside the conversation.
-                         * -----------------------------------------
                          */
 
                         io.to(
@@ -517,18 +711,8 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
-                         * IMPORTANT:
-                         *
-                         * Notify every participant through their
-                         * personal room.
-                         *
-                         * This works even if the receiver has NOT
-                         * opened this conversation.
-                         *
-                         * latestMessage is included so frontend
-                         * does not need another REST request.
-                         * -----------------------------------------
+                         * Notify every participant through
+                         * their personal room.
                          */
 
                         await notifyConversationParticipants(
@@ -556,6 +740,7 @@ const socketHandler = (io) => {
                             error.message
                         );
 
+
                         acknowledge?.({
                             ok: false,
                             message:
@@ -582,7 +767,9 @@ const socketHandler = (io) => {
                             !data?.messageId ||
                             !data?.senderId
                         ) {
+
                             return;
+
                         }
 
 
@@ -606,13 +793,12 @@ const socketHandler = (io) => {
                             );
 
                             return;
+
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Update currently opened conversation.
-                         * -----------------------------------------
                          */
 
                         io.to(
@@ -624,13 +810,8 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
-                         * Find the actual latest message.
-                         *
-                         * Important:
-                         * Edited message may NOT be the latest
-                         * message.
-                         * -----------------------------------------
+                         * Edited message may NOT be the
+                         * latest message.
                          */
 
                         const latestMessage =
@@ -640,9 +821,7 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
-                         * Update sidebar for EVERY participant.
-                         * -----------------------------------------
+                         * Update sidebar for every participant.
                          */
 
                         await notifyConversationParticipants(
@@ -684,14 +863,14 @@ const socketHandler = (io) => {
                             !data?.messageId ||
                             !data?.senderId
                         ) {
+
                             return;
+
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Find original message.
-                         * -----------------------------------------
                          */
 
                         const message =
@@ -707,13 +886,12 @@ const socketHandler = (io) => {
                             );
 
                             return;
+
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Only sender can delete.
-                         * -----------------------------------------
                          */
 
                         if (
@@ -726,13 +904,12 @@ const socketHandler = (io) => {
                             );
 
                             return;
+
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Delete file from Cloudinary.
-                         * -----------------------------------------
                          */
 
                         if (
@@ -776,15 +953,14 @@ const socketHandler = (io) => {
                                 );
 
                                 return;
+
                             }
 
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Soft delete in Cassandra.
-                         * -----------------------------------------
                          */
 
                         const deletedMessage =
@@ -804,13 +980,12 @@ const socketHandler = (io) => {
                             );
 
                             return;
+
                         }
 
 
                         /*
-                         * -----------------------------------------
                          * Update open conversation.
-                         * -----------------------------------------
                          */
 
                         io.to(
@@ -823,12 +998,8 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
-                         * Find actual latest message after deletion.
-                         *
-                         * This is important when the deleted
-                         * message was the last message.
-                         * -----------------------------------------
+                         * Find actual latest message
+                         * after deletion.
                          */
 
                         const latestMessage =
@@ -839,10 +1010,7 @@ const socketHandler = (io) => {
 
 
                         /*
-                         * -----------------------------------------
-                         * Update conversation sidebar for EVERY
-                         * participant.
-                         * -----------------------------------------
+                         * Update sidebar for every participant.
                          */
 
                         await notifyConversationParticipants(
@@ -883,9 +1051,11 @@ const socketHandler = (io) => {
                         return;
                     }
 
+
                     socket.leave(
                         conversationId
                     );
+
 
                     console.log(
                         `user ${socket.id} left conversation: ${conversationId}`
@@ -914,7 +1084,6 @@ const socketHandler = (io) => {
     );
 
 };
-
 
 
 export default socketHandler;
