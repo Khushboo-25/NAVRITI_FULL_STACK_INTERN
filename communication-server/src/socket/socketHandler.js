@@ -248,6 +248,155 @@ const socketHandler = (io) => {
 
 
             // =========================================================
+            // One-to-one screen sharing WebRTC signaling
+            // =========================================================
+
+            socket.on(
+                "screenShare:offer",
+                ({ conversationId, userId, offer }) => {
+
+                    console.log(
+                        "SCREEN SHARE OFFER:",
+                        {
+                            socketId: socket.id,
+                            conversationId,
+                            userId,
+                        }
+                    );
+
+                    if (!conversationId || !userId || !offer) {
+                        console.log(
+                            "SCREEN SHARE OFFER INVALID"
+                        );
+                        return;
+                    }
+
+                    socket.to(conversationId).emit(
+                        "screenShare:offer",
+                        {
+                            userId,
+                            offer,
+                        }
+                    );
+                }
+            );
+
+
+            socket.on(
+                "screenShare:answer",
+                ({ conversationId, userId, answer }) => {
+
+                    console.log(
+                        "SCREEN SHARE ANSWER:",
+                        {
+                            socketId: socket.id,
+                            conversationId,
+                            userId,
+                        }
+                    );
+
+                    if (!conversationId || !userId || !answer) {
+                        return;
+                    }
+
+                    socket.to(conversationId).emit(
+                        "screenShare:answer",
+                        {
+                            userId,
+                            answer,
+                        }
+                    );
+                }
+            );
+
+
+            socket.on(
+                "screenShare:ice-candidate",
+                ({ conversationId, userId, candidate }) => {
+
+                    console.log(
+                        "SCREEN SHARE ICE:",
+                        {
+                            socketId: socket.id,
+                            conversationId,
+                            userId,
+                        }
+                    );
+
+                    if (
+                        !conversationId ||
+                        !userId ||
+                        !candidate
+                    ) {
+                        return;
+                    }
+
+                    socket.to(conversationId).emit(
+                        "screenShare:ice-candidate",
+                        {
+                            userId,
+                            candidate,
+                        }
+                    );
+                }
+            );
+
+
+            socket.on(
+                "screenShare:started",
+                ({ conversationId, userId }) => {
+
+                    console.log(
+                        "SCREEN SHARE STARTED:",
+                        {
+                            socketId: socket.id,
+                            conversationId,
+                            userId,
+                        }
+                    );
+
+                    if (!conversationId || !userId) {
+                        return;
+                    }
+
+                    socket.to(conversationId).emit(
+                        "screenShare:started",
+                        {
+                            userId,
+                        }
+                    );
+                }
+            );
+
+
+            socket.on(
+                "screenShare:stopped",
+                ({ conversationId, userId }) => {
+
+                    console.log(
+                        "SCREEN SHARE STOPPED:",
+                        {
+                            socketId: socket.id,
+                            conversationId,
+                            userId,
+                        }
+                    );
+
+                    if (!conversationId || !userId) {
+                        return;
+                    }
+
+                    socket.to(conversationId).emit(
+                        "screenShare:stopped",
+                        {
+                            userId,
+                        }
+                    );
+                }
+            );
+
+
+            // =========================================================
             // Personal user room
             //
             // Frontend joins:

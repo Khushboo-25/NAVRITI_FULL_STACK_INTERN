@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import MessageList from "../MessageList/MessageList";
 import ChatInput from "../ChatInput/ChatInput";
 import MembersPanel from "../MembersPanel/MembersPanel";
+import ScreenShare from "../ScreenShare/ScreenShare";
 
 import "./ChatWindow.css";
 
@@ -154,6 +155,15 @@ function ChatWindow({
                     </p>
 
                 </div>
+
+
+                {/* Screen Share */}
+
+                <ScreenShare
+                    conversationId={selectedConversation.conversationId}
+                    currentUser={currentUser}
+                    enabled={true}
+                />
 
 
                 {/* Three Dot / Members Toggle */}

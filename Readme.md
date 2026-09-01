@@ -1289,3 +1289,18 @@ Announcemnt services
 | Get one announcement | GET    | `/announcement-portals/:portalId/announcements/:announcementId?userId=...` |
 | Update announcement  | PATCH  | `/announcement-portals/:portalId/announcements/:announcementId`            |
 | Delete announcement  | DELETE | `/announcement-portals/:portalId/announcements/:announcementId?userId=...` |
+
+
+
+
+connecting Cassndra
+
+1. docker destop container active
+
+terminal
+2. docker start cassandra-dev
+
+3. start cqlsh
+docker exec -it cassandra-dev cqlsh
+4.
+use navriti;

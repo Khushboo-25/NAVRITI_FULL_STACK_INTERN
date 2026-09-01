@@ -16,8 +16,16 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer,{
     cors:{
-        origin: process.env.CLIENT_URL || "*",
-        methods: ["GET", "POST"]
+        origin: function(origin, callback) {
+            // Allow all localhost origins for development
+            if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 

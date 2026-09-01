@@ -16,7 +16,10 @@ export function initializeSocket(
         }
 
         socket = io(serverUrl, {
-            transports: ["websocket"],
+            transports: ["polling", "websocket"],
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
         });
 
         socket.on("connect", () => {
@@ -166,4 +169,46 @@ export function sendAnnouncementIceCandidate(
             candidate,
         }
     );
+}
+
+export function sendScreenShareOffer(conversationId, userId, offer) {
+    getSocket().emit("screenShare:offer", {
+        conversationId,
+        userId,
+        offer,
+    });
+}
+
+export function sendScreenShareAnswer(conversationId, userId, answer) {
+    getSocket().emit("screenShare:answer", {
+        conversationId,
+        userId,
+        answer,
+    });
+}
+
+export function sendScreenShareIceCandidate(
+    conversationId,
+    userId,
+    candidate
+) {
+    getSocket().emit("screenShare:ice-candidate", {
+        conversationId,
+        userId,
+        candidate,
+    });
+}
+
+export function notifyScreenShareStarted(conversationId, userId) {
+    getSocket().emit("screenShare:started", {
+        conversationId,
+        userId,
+    });
+}
+
+export function notifyScreenShareStopped(conversationId, userId) {
+    getSocket().emit("screenShare:stopped", {
+        conversationId,
+        userId,
+    });
 }

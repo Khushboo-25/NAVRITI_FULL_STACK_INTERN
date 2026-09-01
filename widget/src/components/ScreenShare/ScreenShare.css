@@ -1,0 +1,104 @@
+.rtc-screen-share-button {
+    width: 38px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    border: none;
+    border-radius: 9px;
+
+    background: transparent;
+
+    color: #69707d;
+
+    font-size: 17px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.15s ease;
+}
+
+
+.rtc-screen-share-button:hover {
+    background: #eef0ff;
+    color: #6366f1;
+}
+
+
+.rtc-screen-share-button.active {
+    background: #6366f1;
+    color: white;
+}
+
+
+.rtc-screen-share-button:active {
+    transform: scale(0.92);
+}
+
+
+/* =====================================================
+   REMOTE SCREEN VIEWER
+   ===================================================== */
+
+.rtc-screen-share-viewer {
+    position: absolute;
+
+    top: 80px;
+    left: 14px;
+    right: 14px;
+
+    z-index: 100;
+
+    background: #171923;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.30);
+}
+
+
+.rtc-screen-share-viewer-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 9px 12px;
+
+    color: white;
+
+    font-size: 12px;
+}
+
+
+.rtc-screen-share-live {
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.06em;
+}
+
+
+.rtc-screen-share-video {
+    display: block;
+
+    width: 100%;
+
+    height: auto;
+
+    min-height: 200px;
+
+    max-height: 55vh;
+
+    object-fit: contain;
+
+    background: #000;
+}
