@@ -1295,9 +1295,9 @@ Announcemnt services
 
 connecting Cassndra
 
-1.  docker destop container active
+ docker destop container active
 terminal
-2.  docker start cassandra-dev
-3.  start cqlsh
-docker exec -it cassandra-dev cqlsh
-4.  use navriti;
+cmd 1.  docker start cassandra-dev
+start cqlsh
+cmd 2. docker exec -it cassandra-dev cqlsh
+cmd 3.  use navriti;

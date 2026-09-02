@@ -319,6 +319,88 @@ function WidgetContainer({
         }, [
             senderId,
         ]);
+    const delay = (milliseconds) =>
+        new Promise(
+            (resolve) =>
+                setTimeout(
+                    resolve,
+                    milliseconds
+                )
+        );
+
+
+    const refreshConversationsWithRetry =
+        useCallback(
+            async (
+                expectedConversationId = null
+            ) => {
+
+                const attempts = [
+                    0,
+                    150,
+                    350,
+                ];
+
+
+                for (
+                    let index = 0;
+                    index < attempts.length;
+                    index++
+                ) {
+
+                    if (
+                        attempts[index] > 0
+                    ) {
+
+                        await delay(
+                            attempts[index]
+                        );
+
+                    }
+
+
+                    await refreshConversations();
+
+
+                    /*
+                    * No specific conversation expected.
+                    */
+
+                    if (
+                        !expectedConversationId
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                    * Check whether conversation
+                    * exists after refresh.
+                    */
+
+                    const expectedId =
+                        normalizeId(
+                            expectedConversationId
+                        );
+
+
+                    if (
+                        !expectedId
+                    ) {
+
+                        return;
+
+                    }
+
+                }
+
+            },
+            [
+                refreshConversations,
+            ]
+        );
 
 
     /*
@@ -351,11 +433,27 @@ function WidgetContainer({
                 }
 
 
+                const lastMessage =
+                    getLastMessagePreview(
+                        newMessage
+                    );
+
+
+                const lastMessageTime =
+                    newMessage.createdAt ||
+                    newMessage.updatedAt ||
+                    new Date().toISOString();
+
+
+                let conversationFound =
+                    false;
+
+
                 setConversations(
-                    (prev) => {
+                    (previousConversations) => {
 
                         const existingIndex =
-                            prev.findIndex(
+                            previousConversations.findIndex(
                                 (conversation) =>
                                     normalizeId(
                                         conversation.conversationId
@@ -365,38 +463,134 @@ function WidgetContainer({
 
 
                         /*
-                         * -------------------------------------
-                         * Existing conversation
-                         * -------------------------------------
-                         */
+                        * Inactive/new conversation is
+                        * not available in current local state.
+                        */
 
-                       if (existingIndex === -1) {
-                            return prev;
+                        if (
+                            existingIndex === -1
+                        ) {
+
+                            return previousConversations;
+
                         }
 
 
+                        conversationFound =
+                            true;
+
+
+                        const existingConversation =
+                            previousConversations[
+                                existingIndex
+                            ];
+
+
+                        const updatedConversation = {
+
+                            ...existingConversation,
+
+                            lastMessage,
+
+                            lastMessageTime,
+
+                        };
+
+
                         /*
-                         * -------------------------------------
-                         * Conversation not currently present.
-                         *
-                         * This can happen when another user
-                         * creates a new direct/group conversation.
-                         *
-                         * Fetch complete conversation metadata.
-                         * -------------------------------------
-                         */
+                        * Latest message conversation
+                        * always moves to the top.
+                        */
 
-                        refreshConversations();
+                        return [
 
+                            updatedConversation,
 
-                        return prev;
+                            ...previousConversations.filter(
+                                (
+                                    _conversation,
+                                    index
+                                ) =>
+                                    index !==
+                                    existingIndex
+                            ),
+
+                        ];
 
                     }
                 );
 
+
+                /*
+                * Keep selected conversation metadata
+                * concurrent with sidebar.
+                */
+
+                if (
+                    normalizeId(
+                        selectedConversationRef.current
+                    ) ===
+                    newConversationId
+                ) {
+
+                    setSelectedConversation(
+                        (previousConversation) => {
+
+                            if (
+                                !previousConversation
+                            ) {
+
+                                return previousConversation;
+
+                            }
+
+
+                            if (
+                                normalizeId(
+                                    previousConversation.conversationId
+                                ) !==
+                                newConversationId
+                            ) {
+
+                                return previousConversation;
+
+                            }
+
+
+                            return {
+
+                                ...previousConversation,
+
+                                lastMessage,
+
+                                lastMessageTime,
+
+                            };
+
+                        }
+                    );
+
+                }
+
+
+                /*
+                * If conversation was not locally present,
+                * fetch it after realtime state update.
+                */
+
+                if (
+                    !conversationFound
+                ) {
+
+                    refreshConversationsWithRetry(
+                        newConversationId
+                    );
+
+                }
+
             },
             [
-                refreshConversations,
+                refreshConversationsWithRetry,
             ]
         );
 
@@ -461,31 +655,52 @@ function WidgetContainer({
                     data
                 );
 
-                if (!data?.conversationId) {
+
+                const updatedConversationId =
+                    normalizeId(
+                        data?.conversationId
+                    );
+
+
+                if (
+                    !updatedConversationId
+                ) {
+
                     return;
+
                 }
 
+
                 /*
-                * If backend sends latestMessage,
-                * update sidebar immediately.
+                * If complete message comes from backend,
+                * update sidebar instantly.
                 */
-                if (data.latestMessage) {
+
+                if (
+                    data?.latestMessage
+                ) {
+
                     updateConversationFromMessage(
                         data.latestMessage
                     );
+
                     return;
+
                 }
 
+
                 /*
-                * Backend currently sends only:
-                * conversationId
-                * latestMessageId
-                * participants
+                * Backend only provides conversation metadata.
                 *
-                * So Cassandra se fresh conversation list
-                * load karo and WAIT for it.
+                * Fetch Cassandra state with retries because
+                * socket event can arrive before the Cassandra
+                * read is immediately consistent.
                 */
-                await refreshConversations();
+
+                await refreshConversationsWithRetry(
+                    updatedConversationId
+                );
+
             };
 
 
@@ -515,71 +730,87 @@ function WidgetContainer({
 
 
                 /*
-                 * ---------------------------------------------
-                 * ALWAYS update conversation sidebar first.
-                 * ---------------------------------------------
-                 */
+                * =================================================
+                * Update sidebar immediately.
+                * =================================================
+                */
 
                 updateConversationFromMessage(
                     newMessage
                 );
 
 
+                const currentConversationId =
+                    normalizeId(
+                        selectedConversationRef.current
+                    );
+
+
                 /*
-                 * ---------------------------------------------
-                 * Mention notification
-                 * ---------------------------------------------
-                 */
+                * =================================================
+                * Mention handling.
+                * Only unread/inactive conversations receive badge.
+                * =================================================
+                */
 
                 const currentUserName =
                     currentUser?.displayName?.trim();
 
 
                 if (
-                    currentUserName &&
-                    newMessage.content
+                    currentConversationId !==
+                    newConversationId
                 ) {
 
-                    const escapedName =
-                        currentUserName.replace(
-                            /[.*+?^${}()|[\]\\]/g,
-                            "\\$&"
-                        );
-
-
-                    const mentionRegex =
-                        new RegExp(
-                            `@${escapedName}(?=\\s|$|[.,!?])`,
-                            "i"
-                        );
-
-
-                    const wasMentioned =
-                        mentionRegex.test(
-                            newMessage.content
-                        );
-
-
                     if (
-                        wasMentioned
+                        currentUserName &&
+                        newMessage.content
                     ) {
 
-                        setMentionedConversations(
-                            (prev) => {
-
-                                const updated =
-                                    new Set(prev);
-
-
-                                updated.add(
-                                    newConversationId
-                                );
+                        const escapedName =
+                            currentUserName.replace(
+                                /[.*+?^${}()|[\]\\]/g,
+                                "\\$&"
+                            );
 
 
-                                return updated;
+                        const mentionRegex =
+                            new RegExp(
+                                `@${escapedName}(?=\\s|$|[.,!?])`,
+                                "i"
+                            );
 
-                            }
-                        );
+
+                        const wasMentioned =
+                            mentionRegex.test(
+                                newMessage.content
+                            );
+
+
+                        if (
+                            wasMentioned
+                        ) {
+
+                            setMentionedConversations(
+                                (previousMentions) => {
+
+                                    const updatedMentions =
+                                        new Set(
+                                            previousMentions
+                                        );
+
+
+                                    updatedMentions.add(
+                                        newConversationId
+                                    );
+
+
+                                    return updatedMentions;
+
+                                }
+                            );
+
+                        }
 
                     }
 
@@ -587,16 +818,11 @@ function WidgetContainer({
 
 
                 /*
-                 * ---------------------------------------------
-                 * Only update currently opened conversation.
-                 * ---------------------------------------------
-                 */
-
-                const currentConversationId =
-                    normalizeId(
-                        selectedConversationRef.current
-                    );
-
+                * =================================================
+                * Only add message to visible chat if this
+                * conversation is currently open.
+                * =================================================
+                */
 
                 if (
                     currentConversationId !==
@@ -608,14 +834,8 @@ function WidgetContainer({
                 }
 
 
-                /*
-                 * ---------------------------------------------
-                 * Prevent duplicate messages.
-                 * ---------------------------------------------
-                 */
-
                 setMessages(
-                    (prev) => {
+                    (previousMessages) => {
 
                         const newMessageId =
                             normalizeId(
@@ -623,39 +843,48 @@ function WidgetContainer({
                             );
 
 
+                        /*
+                        * Some backends can emit duplicate events.
+                        */
+
                         const exists =
-                            prev.some(
-                                (msg) =>
+                            previousMessages.some(
+                                (existingMessage) =>
                                     normalizeId(
-                                        msg._id
+                                        existingMessage._id
                                     ) ===
                                     newMessageId
                             );
 
 
                         if (exists) {
-                            return prev;
+
+                            return previousMessages;
+
                         }
 
 
-                        const next = [
-                            ...prev,
+                        const nextMessages = [
+
+                            ...previousMessages,
+
                             newMessage,
+
                         ];
 
 
-                        next.sort(
-                            (a, b) =>
+                        nextMessages.sort(
+                            (firstMessage, secondMessage) =>
                                 new Date(
-                                    a.createdAt
+                                    firstMessage.createdAt
                                 ) -
                                 new Date(
-                                    b.createdAt
+                                    secondMessage.createdAt
                                 )
                         );
 
 
-                        return next;
+                        return nextMessages;
 
                     }
                 );
@@ -886,6 +1115,7 @@ function WidgetContainer({
         serverUrl,
         currentUser?.displayName,
         refreshConversations,
+        refreshConversationsWithRetry,
         updateConversationFromMessage,
     ]);
 
@@ -1288,6 +1518,7 @@ function WidgetContainer({
                 );
 
             }
+            
 
         };
 

@@ -268,8 +268,7 @@ function ChatWindow({
                     }
                     currentUser={currentUser}
                     participantIds={users}
-                    enabled={true}
-                    visible={showScreenShare}
+                    booleanConnection={showScreenShare}
                 />
             </div>
 
